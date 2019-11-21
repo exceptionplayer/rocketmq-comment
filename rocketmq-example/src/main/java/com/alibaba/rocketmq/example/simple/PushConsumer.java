@@ -34,6 +34,10 @@ public class PushConsumer {
         consumer.subscribe("TopicTest1", "TagA || TagC || TagD");
         consumer.subscribe("TopicTest2", "*");
         consumer.subscribe("TopicTest3", "*");
+
+
+        consumer.unsubscribe("TopicTest1");
+
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
 
         consumer.registerMessageListener(new MessageListenerConcurrently() {

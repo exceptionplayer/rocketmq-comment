@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.namesrv.kvconfig;
 
@@ -49,6 +49,9 @@ public class KVConfigManager {
     }
 
 
+    /**
+     * 加载kvConfig.json文件中的KV配置信息（如果有的话)
+     */
     public void load() {
         String content = MixAll.file2String(this.namesrvController.getNamesrvConfig().getKvConfigPath());
         if (content != null) {
@@ -76,18 +79,15 @@ public class KVConfigManager {
                 final String prev = kvTable.put(key, value);
                 if (null != prev) {
                     log.info("putKVConfig update config item, Namespace: {} Key: {} Value: {}", //
-                        namespace, key, value);
-                }
-                else {
+                            namespace, key, value);
+                } else {
                     log.info("putKVConfig create new config item, Namespace: {} Key: {} Value: {}", //
-                        namespace, key, value);
+                            namespace, key, value);
                 }
-            }
-            finally {
+            } finally {
                 this.lock.writeLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("putKVConfig InterruptedException", e);
         }
 
@@ -103,14 +103,12 @@ public class KVConfigManager {
                 if (null != kvTable) {
                     String value = kvTable.remove(key);
                     log.info("deleteKVConfig delete a config item, Namespace: {} Key: {} Value: {}", //
-                        namespace, key, value);
+                            namespace, key, value);
                 }
-            }
-            finally {
+            } finally {
                 this.lock.writeLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("deleteKVConfig InterruptedException", e);
         }
 
@@ -128,12 +126,10 @@ public class KVConfigManager {
                     table.setTable(kvTable);
                     return table.encode();
                 }
-            }
-            finally {
+            } finally {
                 this.lock.readLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("getKVListByNamespace InterruptedException", e);
         }
 
@@ -149,12 +145,10 @@ public class KVConfigManager {
                 if (null != kvTable) {
                     return kvTable.get(key);
                 }
-            }
-            finally {
+            } finally {
                 this.lock.readLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("getKVConfig InterruptedException", e);
         }
 
@@ -174,16 +168,13 @@ public class KVConfigManager {
                 if (null != content) {
                     MixAll.string2File(content, this.namesrvController.getNamesrvConfig().getKvConfigPath());
                 }
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 log.error("persist kvconfig Exception, "
                         + this.namesrvController.getNamesrvConfig().getKvConfigPath(), e);
-            }
-            finally {
+            } finally {
                 this.lock.readLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("persist InterruptedException", e);
         }
 
@@ -206,16 +197,14 @@ public class KVConfigManager {
                         while (itSub.hasNext()) {
                             Entry<String, String> nextSub = itSub.next();
                             log.info("configTable NS: {} Key: {} Value: {}", next.getKey(), nextSub.getKey(),
-                                nextSub.getValue());
+                                    nextSub.getValue());
                         }
                     }
                 }
-            }
-            finally {
+            } finally {
                 this.lock.readLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("printAllPeriodically InterruptedException", e);
         }
     }

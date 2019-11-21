@@ -31,7 +31,12 @@ import java.util.Set;
  */
 public class SubscriptionData implements Comparable<SubscriptionData> {
     public final static String SUB_ALL = "*";
+
+    /**
+     * ??
+     */
     private boolean classFilterMode = false;
+
     private String topic;
     private String subString;
     private Set<String> tagsSet = new HashSet<String>();

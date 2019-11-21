@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.remoting.protocol;
 
@@ -34,16 +34,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
+ * Netty通信交互命令
+ *
  * @author shijia.wxr
  */
 public class RemotingCommand {
     private static final Logger log = LoggerFactory.getLogger(RemotingHelper.RemotingLogName);
     public static String RemotingVersionKey = "rocketmq.remoting.version";
+
     public static final String SERIALIZE_TYPE_PROPERTY = "rocketmq.serialize.type";
     public static final String SERIALIZE_TYPE_ENV = "ROCKETMQ_SERIALIZE_TYPE";
+
     private static volatile int ConfigVersion = -1;
+
     private static AtomicInteger RequestId = new AtomicInteger(0);
 
+    /**
+     * 命令类型：请求还是响应
+     */
     private static final int RPC_TYPE = 0; // 0, REQUEST_COMMAND
     // 1, RESPONSE_COMMAND
 
@@ -51,28 +59,36 @@ public class RemotingCommand {
     // 1, Oneway
 
     private int code;
+
     private LanguageCode language = LanguageCode.JAVA;
+
     private int version = 0;
+
+    /**
+     * 请求编号！！
+     */
     private int opaque = RequestId.getAndIncrement();
+
     private int flag = 0;
     private String remark;
+
     private HashMap<String, String> extFields;
+
 
     private transient CommandCustomHeader customHeader;
 
-    private static final Map<Class<? extends CommandCustomHeader>, Field[]> clazzFieldsCache =
-            new HashMap<Class<? extends CommandCustomHeader>, Field[]>();
+    private static final Map<Class<? extends CommandCustomHeader>, Field[]> clazzFieldsCache = new HashMap<Class<? extends CommandCustomHeader>, Field[]>();
     private static final Map<Class, String> canonicalNameCache = new HashMap<Class, String>();
     private static final Map<Field, Annotation> notNullAnnotationCache = new HashMap<Field, Annotation>();
 
     private static SerializeType SerializeTypeConfigInThisServer = SerializeType.JSON;
+
     static {
         final String protocol = System.getProperty(SERIALIZE_TYPE_PROPERTY, System.getenv(SERIALIZE_TYPE_ENV));
         if (!isBlank(protocol)) {
             try {
                 SerializeTypeConfigInThisServer = SerializeType.valueOf(protocol);
-            }
-            catch (IllegalArgumentException e) {
+            } catch (IllegalArgumentException e) {
                 throw new RuntimeException("parser specified protocol error. protocol=" + protocol, e);
             }
         }
@@ -155,11 +171,9 @@ public class RemotingCommand {
             try {
                 CommandCustomHeader objectHeader = classHeader.newInstance();
                 cmd.customHeader = objectHeader;
-            }
-            catch (InstantiationException e) {
+            } catch (InstantiationException e) {
                 return null;
-            }
-            catch (IllegalAccessException e) {
+            } catch (IllegalAccessException e) {
                 return null;
             }
         }
@@ -171,8 +185,7 @@ public class RemotingCommand {
     private static void setCmdVersion(RemotingCommand cmd) {
         if (ConfigVersion >= 0) {
             cmd.setVersion(ConfigVersion);
-        }
-        else {
+        } else {
             String v = System.getProperty(RemotingVersionKey);
             if (v != null) {
                 int value = Integer.parseInt(v);
@@ -198,10 +211,8 @@ public class RemotingCommand {
                         try {
                             field.setAccessible(true);
                             value = field.get(this.customHeader);
-                        }
-                        catch (IllegalArgumentException e) {
-                        }
-                        catch (IllegalAccessException e) {
+                        } catch (IllegalArgumentException e) {
+                        } catch (IllegalAccessException e) {
                         }
 
                         if (value != null) {
@@ -242,11 +253,9 @@ public class RemotingCommand {
         CommandCustomHeader objectHeader;
         try {
             objectHeader = classHeader.newInstance();
-        }
-        catch (InstantiationException e) {
+        } catch (InstantiationException e) {
             return null;
-        }
-        catch (IllegalAccessException e) {
+        } catch (IllegalAccessException e) {
             return null;
         }
 
@@ -273,27 +282,21 @@ public class RemotingCommand {
 
                             if (type.equals(StringCanonicalName)) {
                                 valueParsed = value;
-                            }
-                            else if (type.equals(IntegerCanonicalName1) || type.equals(IntegerCanonicalName2)) {
+                            } else if (type.equals(IntegerCanonicalName1) || type.equals(IntegerCanonicalName2)) {
                                 valueParsed = Integer.parseInt(value);
-                            }
-                            else if (type.equals(LongCanonicalName1) || type.equals(LongCanonicalName2)) {
+                            } else if (type.equals(LongCanonicalName1) || type.equals(LongCanonicalName2)) {
                                 valueParsed = Long.parseLong(value);
-                            }
-                            else if (type.equals(BooleanCanonicalName1) || type.equals(BooleanCanonicalName2)) {
+                            } else if (type.equals(BooleanCanonicalName1) || type.equals(BooleanCanonicalName2)) {
                                 valueParsed = Boolean.parseBoolean(value);
-                            }
-                            else if (type.equals(DoubleCanonicalName1) || type.equals(DoubleCanonicalName2)) {
+                            } else if (type.equals(DoubleCanonicalName1) || type.equals(DoubleCanonicalName2)) {
                                 valueParsed = Double.parseDouble(value);
-                            }
-                            else {
+                            } else {
                                 throw new RemotingCommandException("the custom field <" + fieldName + "> type is not supported");
                             }
 
                             field.set(objectHeader, valueParsed);
 
-                        }
-                        catch (Throwable e) {
+                        } catch (Throwable e) {
                         }
                     }
                 }
@@ -310,8 +313,7 @@ public class RemotingCommand {
         this.makeCustomHeaderToNet();
         if (SerializeType.ROCKETMQ == serializeTypeCurrentRPC) {
             return RocketMQSerializable.rocketMQProtocolEncode(this);
-        }
-        else {
+        } else {
             return RemotingSerializable.encode(this);
         }
     }
@@ -319,16 +321,16 @@ public class RemotingCommand {
 
     private static RemotingCommand headerDecode(byte[] headerData, SerializeType type) {
         switch (type) {
-        case JSON:
-            RemotingCommand resultJson = RemotingSerializable.decode(headerData, RemotingCommand.class);
-            resultJson.setSerializeTypeCurrentRPC(type);
-            return resultJson;
-        case ROCKETMQ:
-            RemotingCommand resultRMQ = RocketMQSerializable.rocketMQProtocolDecode(headerData);
-            resultRMQ.setSerializeTypeCurrentRPC(type);
-            return resultRMQ;
-        default:
-            break;
+            case JSON:
+                RemotingCommand resultJson = RemotingSerializable.decode(headerData, RemotingCommand.class);
+                resultJson.setSerializeTypeCurrentRPC(type);
+                return resultJson;
+            case ROCKETMQ:
+                RemotingCommand resultRMQ = RocketMQSerializable.rocketMQProtocolDecode(headerData);
+                resultRMQ.setSerializeTypeCurrentRPC(type);
+                return resultRMQ;
+            default:
+                break;
         }
 
         return null;

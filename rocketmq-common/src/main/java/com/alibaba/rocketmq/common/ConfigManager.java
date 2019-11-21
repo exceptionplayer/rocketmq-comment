@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.common;
 
@@ -49,14 +49,12 @@ public abstract class ConfigManager {
             String jsonString = MixAll.file2String(fileName);
             if (null == jsonString || jsonString.length() == 0) {
                 return this.loadBak();
-            }
-            else {
+            } else {
                 this.decode(jsonString);
                 plog.info("load {} OK", fileName);
                 return true;
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             plog.error("load " + fileName + " Failed, and try to load backup file", e);
             return this.loadBak();
         }
@@ -73,8 +71,7 @@ public abstract class ConfigManager {
                 plog.info("load " + fileName + " OK");
                 return true;
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             plog.error("load " + fileName + " Failed", e);
             return false;
         }
@@ -82,15 +79,16 @@ public abstract class ConfigManager {
         return true;
     }
 
-
+    /**
+     * 把当前Broker的配置信息都写到json格式文件中
+     */
     public synchronized void persist() {
         String jsonString = this.encode(true);
         if (jsonString != null) {
             String fileName = this.configFilePath();
             try {
                 MixAll.string2File(jsonString, fileName);
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 plog.error("persist file Exception, " + fileName, e);
             }
         }

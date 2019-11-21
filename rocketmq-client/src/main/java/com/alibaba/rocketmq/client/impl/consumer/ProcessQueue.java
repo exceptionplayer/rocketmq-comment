@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.client.impl.consumer;
 
@@ -35,25 +35,33 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Queue consumption snapshot
- * 
+ *
  * @author shijia.wxr
  */
 public class ProcessQueue {
     public final static long RebalanceLockMaxLiveTime = Long.parseLong(System.getProperty(
-        "rocketmq.client.rebalance.lockMaxLiveTime", "30000"));
+            "rocketmq.client.rebalance.lockMaxLiveTime", "30000"));
     public final static long RebalanceLockInterval = Long.parseLong(System.getProperty(
-        "rocketmq.client.rebalance.lockInterval", "20000"));
+            "rocketmq.client.rebalance.lockInterval", "20000"));
 
     private final Logger log = ClientLogger.getLog();
     private final ReadWriteLock lockTreeMap = new ReentrantReadWriteLock();
     private final TreeMap<Long, MessageExt> msgTreeMap = new TreeMap<Long, MessageExt>();
+
+    /**
+     * TODO:
+     */
     private volatile long queueOffsetMax = 0L;
+
+    /**
+     * 当前队列中还没有处理完的消息数量
+     */
     private final AtomicLong msgCount = new AtomicLong();
 
     private volatile boolean dropped = false;
     private volatile long lastPullTimestamp = System.currentTimeMillis();
     private final static long PullMaxIdleTime = Long.parseLong(System.getProperty(
-        "rocketmq.client.pull.pullMaxIdleTime", "120000"));
+            "rocketmq.client.pull.pullMaxIdleTime", "120000"));
 
     private volatile long lastConsumeTimestamp = System.currentTimeMillis();
 
@@ -79,11 +87,23 @@ public class ProcessQueue {
         return result;
     }
 
+    /**
+     * 放入消息到ProcessQueue
+     *
+     * @param msgs
+     * @return
+     */
     public boolean putMessage(final List<MessageExt> msgs) {
         boolean dispatchToConsume = false;
         try {
             this.lockTreeMap.writeLock().lockInterruptibly();
             try {
+                /**
+                 * 把消息放入treemap，根据offset值去除重复消息，统计有效消息数量，更新Offset
+                 *
+                 * 消息以Offset为Key放入了treemap，则默认会按照offset的升序排序
+                 *
+                 */
                 int validMsgCnt = 0;
                 for (MessageExt msg : msgs) {
                     MessageExt old = msgTreeMap.put(msg.getQueueOffset(), msg);
@@ -100,21 +120,26 @@ public class ProcessQueue {
                 }
 
                 if (!msgs.isEmpty()) {
+                    //获取最后一条消息的MaxOffSet
                     MessageExt messageExt = msgs.get(msgs.size() - 1);
                     String property = messageExt.getProperty(MessageConst.PROPERTY_MAX_OFFSET);
                     if (property != null) {
+                        /**
+                         * commitlog offset
+                         * 减去
+                         * 消息对应MessageQueue的Offset
+                         *
+                         */
                         long accTotal = Long.parseLong(property) - messageExt.getQueueOffset();
                         if (accTotal > 0) {
                             this.msgAccCnt = accTotal;
                         }
                     }
                 }
-            }
-            finally {
+            } finally {
                 this.lockTreeMap.writeLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("putMessage exception", e);
         }
 
@@ -122,6 +147,11 @@ public class ProcessQueue {
     }
 
 
+    /**
+     * 获取当前队列中最后一条消息和第一条消息的Offset差值
+     *
+     * @return
+     */
     public long getMaxSpan() {
         try {
             this.lockTreeMap.readLock().lockInterruptibly();
@@ -129,27 +159,45 @@ public class ProcessQueue {
                 if (!this.msgTreeMap.isEmpty()) {
                     return this.msgTreeMap.lastKey() - this.msgTreeMap.firstKey();
                 }
-            }
-            finally {
+            } finally {
                 this.lockTreeMap.readLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("getMaxSpan exception", e);
         }
 
         return 0;
     }
 
+    /**
+     * 消息处理之前通过putMessage方法放入Queue
+     * 处理之后移除
+     * 移除处理过的消息
+     *
+     * @param msgs
+     * @return 返回待处理的消息的新的Offset
+     */
     public long removeMessage(final List<MessageExt> msgs) {
         long result = -1;
+
         final long now = System.currentTimeMillis();
+
         try {
             this.lockTreeMap.writeLock().lockInterruptibly();
+
             this.lastConsumeTimestamp = now;
+
             try {
                 if (!msgTreeMap.isEmpty()) {
+
+                    /**
+                     * TODO: +1 ??
+                     */
                     result = this.queueOffsetMax + 1;
+
+                    /**
+                     * 移除处理过的消息
+                     */
                     int removedCnt = 0;
                     for (MessageExt msg : msgs) {
                         MessageExt prev = msgTreeMap.remove(msg.getQueueOffset());
@@ -157,18 +205,25 @@ public class ProcessQueue {
                             removedCnt--;
                         }
                     }
+
+                    /**
+                     * 更新现有消息数量
+                     */
                     msgCount.addAndGet(removedCnt);
 
+
+                    /**
+                     * 如果还有消息，则把当前队列中剩余的第一条消息的Offset返回
+                     */
                     if (!msgTreeMap.isEmpty()) {
                         result = msgTreeMap.firstKey();
                     }
                 }
-            }
-            finally {
+
+            } finally {
                 this.lockTreeMap.writeLock().unlock();
             }
-        }
-        catch (Throwable t) {
+        } catch (Throwable t) {
             log.error("removeMessage exception", t);
         }
 
@@ -211,12 +266,10 @@ public class ProcessQueue {
             try {
                 this.msgTreeMap.putAll(this.msgTreeMapTemp);
                 this.msgTreeMapTemp.clear();
-            }
-            finally {
+            } finally {
                 this.lockTreeMap.writeLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("rollback exception", e);
         }
     }
@@ -232,12 +285,10 @@ public class ProcessQueue {
                 if (offset != null) {
                     return offset + 1;
                 }
-            }
-            finally {
+            } finally {
                 this.lockTreeMap.writeLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("commit exception", e);
         }
 
@@ -253,12 +304,10 @@ public class ProcessQueue {
                     this.msgTreeMapTemp.remove(msg.getQueueOffset());
                     this.msgTreeMap.put(msg.getQueueOffset(), msg);
                 }
-            }
-            finally {
+            } finally {
                 this.lockTreeMap.writeLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("makeMessageToCosumeAgain exception", e);
         }
     }
@@ -276,8 +325,7 @@ public class ProcessQueue {
                         if (entry != null) {
                             result.add(entry.getValue());
                             msgTreeMapTemp.put(entry.getKey(), entry.getValue());
-                        }
-                        else {
+                        } else {
                             break;
                         }
                     }
@@ -286,12 +334,10 @@ public class ProcessQueue {
                 if (result.isEmpty()) {
                     consuming = false;
                 }
-            }
-            finally {
+            } finally {
                 this.lockTreeMap.writeLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("take Messages exception", e);
         }
 
@@ -307,12 +353,10 @@ public class ProcessQueue {
                 this.msgTreeMapTemp.clear();
                 this.msgCount.set(0);
                 this.queueOffsetMax = 0L;
-            }
-            finally {
+            } finally {
                 this.lockTreeMap.writeLock().unlock();
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.error("rollback exception", e);
         }
     }
@@ -386,10 +430,8 @@ public class ProcessQueue {
             info.setDroped(this.dropped);
             info.setLastPullTimestamp(this.lastPullTimestamp);
             info.setLastConsumeTimestamp(this.lastConsumeTimestamp);
-        }
-        catch (Exception e) {
-        }
-        finally {
+        } catch (Exception e) {
+        } finally {
             this.lockTreeMap.readLock().unlock();
         }
     }

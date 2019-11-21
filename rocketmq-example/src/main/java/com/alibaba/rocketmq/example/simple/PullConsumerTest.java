@@ -36,6 +36,7 @@ public class PullConsumerTest {
             long offset = 26;
 
             long beginTime = System.currentTimeMillis();
+
             PullResult pullResult = consumer.pullBlockIfNotFound(mq, null, offset, 32);
             System.out.println(System.currentTimeMillis() - beginTime);
             System.out.println(pullResult);
@@ -45,5 +46,7 @@ public class PullConsumerTest {
         }
 
         consumer.shutdown();
+
+
     }
 }

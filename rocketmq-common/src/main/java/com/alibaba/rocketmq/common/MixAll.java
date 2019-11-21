@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.common;
 
@@ -87,6 +87,14 @@ public class MixAll {
     }
 
 
+    /**
+     * Broker VIP Channel
+     * <p>
+     * 地址不变，端口号-2
+     *
+     * @param brokerAddr
+     * @return
+     */
     public static String brokerVIPChannel(final String brokerAddr) {
         String[] ipAndPort = brokerAddr.split(":");
         String brokerAddrNew = ipAndPort[0] + ":" + (Integer.valueOf(ipAndPort[1]) - 2);
@@ -98,8 +106,7 @@ public class MixAll {
         if (processName != null && processName.length() > 0) {
             try {
                 return Long.parseLong(processName.split("@")[0]);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 return 0;
             }
         }
@@ -147,16 +154,13 @@ public class MixAll {
         try {
             fileWriter = new FileWriter(file);
             fileWriter.write(str);
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             throw e;
-        }
-        finally {
+        } finally {
             if (fileWriter != null) {
                 try {
                     fileWriter.close();
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     throw e;
                 }
             }
@@ -180,15 +184,12 @@ public class MixAll {
             byte[] data = new byte[len];
             in.read(data, 0, len);
             return new String(data, "UTF-8");
-        }
-        catch (Exception e) {
-        }
-        finally {
+        } catch (Exception e) {
+        } finally {
             if (null != in) {
                 try {
                     in.close();
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                 }
             }
         }
@@ -207,16 +208,13 @@ public class MixAll {
                 fileReader = new FileReader(file);
                 int len = fileReader.read(data);
                 result = (len == data.length);
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 // e.printStackTrace();
-            }
-            finally {
+            } finally {
                 if (fileReader != null) {
                     try {
                         fileReader.close();
-                    }
-                    catch (IOException e) {
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
@@ -255,11 +253,9 @@ public class MixAll {
                         if (null == value) {
                             value = "";
                         }
-                    }
-                    catch (IllegalArgumentException e) {
+                    } catch (IllegalArgumentException e) {
                         System.out.println(e);
-                    }
-                    catch (IllegalAccessException e) {
+                    } catch (IllegalAccessException e) {
                         System.out.println(e);
                     }
 
@@ -272,8 +268,7 @@ public class MixAll {
 
                     if (log != null) {
                         log.info(name + "=" + value);
-                    }
-                    else {
+                    } else {
                         System.out.println(name + "=" + value);
                     }
                 }
@@ -300,12 +295,10 @@ public class MixAll {
         try {
             InputStream in = new ByteArrayInputStream(str.getBytes(DEFAULT_CHARSET));
             properties.load(in);
-        }
-        catch (UnsupportedEncodingException e) {
+        } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
             return null;
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
             return null;
         }
@@ -325,11 +318,9 @@ public class MixAll {
                     try {
                         field.setAccessible(true);
                         value = field.get(object);
-                    }
-                    catch (IllegalArgumentException e) {
+                    } catch (IllegalArgumentException e) {
                         System.out.println(e);
-                    }
-                    catch (IllegalAccessException e) {
+                    } catch (IllegalAccessException e) {
                         System.out.println(e);
                     }
 
@@ -343,7 +334,7 @@ public class MixAll {
         return properties;
     }
 
-    public static void  properties2Object(final Properties p, final Object object) {
+    public static void properties2Object(final Properties p, final Object object) {
         Method[] methods = object.getClass().getMethods();
         for (Method method : methods) {
             String mn = method.getName();
@@ -361,27 +352,21 @@ public class MixAll {
                             Object arg = null;
                             if (cn.equals("int")) {
                                 arg = Integer.parseInt(property);
-                            }
-                            else if (cn.equals("long")) {
+                            } else if (cn.equals("long")) {
                                 arg = Long.parseLong(property);
-                            }
-                            else if (cn.equals("double")) {
+                            } else if (cn.equals("double")) {
                                 arg = Double.parseDouble(property);
-                            }
-                            else if (cn.equals("boolean")) {
+                            } else if (cn.equals("boolean")) {
                                 arg = Boolean.parseBoolean(property);
-                            }
-                            else if (cn.equals("String")) {
+                            } else if (cn.equals("String")) {
                                 arg = property;
-                            }
-                            else {
+                            } else {
                                 continue;
                             }
-                            method.invoke(object, new Object[] { arg });
+                            method.invoke(object, new Object[]{arg});
                         }
                     }
-                }
-                catch (Throwable e) {
+                } catch (Throwable e) {
                 }
             }
         }
@@ -404,8 +389,7 @@ public class MixAll {
                     inetAddressList.add(addrs.nextElement().getHostAddress());
                 }
             }
-        }
-        catch (SocketException e) {
+        } catch (SocketException e) {
             throw new RuntimeException("get local inet address fail", e);
         }
 
@@ -426,14 +410,20 @@ public class MixAll {
         try {
             InetAddress addr = InetAddress.getLocalHost();
             return addr.getHostAddress();
-        }
-        catch (Throwable e) {
+        } catch (Throwable e) {
             throw new RuntimeException("InetAddress java.net.InetAddress.getLocalHost() throws UnknownHostException"
                     + FAQUrl.suggestTodo(FAQUrl.UNKNOWN_HOST_EXCEPTION), e);
         }
     }
 
 
+    /**
+     * 把target的值设置成value的值，如果value比target大的话，如果value值比targe小，则不设置
+     *
+     * @param target
+     * @param value
+     * @return
+     */
     public static boolean compareAndIncreaseOnly(final AtomicLong target, final long value) {
         long prev = target.get();
         while (value > prev) {
@@ -469,8 +459,7 @@ public class MixAll {
     public static String localhostName() {
         try {
             return InetAddress.getLocalHost().getHostName();
-        }
-        catch (Throwable e) {
+        } catch (Throwable e) {
             throw new RuntimeException("InetAddress java.net.InetAddress.getLocalHost() throws UnknownHostException"
                     + FAQUrl.suggestTodo(FAQUrl.UNKNOWN_HOST_EXCEPTION), e);
         }

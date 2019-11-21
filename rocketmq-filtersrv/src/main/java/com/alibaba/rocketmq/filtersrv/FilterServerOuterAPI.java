@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.filtersrv;
 
@@ -53,28 +53,41 @@ public class FilterServerOuterAPI {
     }
 
 
+    /**
+     * 把FilterSrever注册到Broker
+     *
+     * @param brokerAddr       Broker地址
+     * @param filterServerAddr filerServer地址
+     * @return
+     * @throws RemotingCommandException
+     * @throws RemotingConnectException
+     * @throws RemotingSendRequestException
+     * @throws RemotingTimeoutException
+     * @throws InterruptedException
+     * @throws MQBrokerException
+     */
     public RegisterFilterServerResponseHeader registerFilterServerToBroker(//
-            final String brokerAddr,// 1
-            final String filterServerAddr// 2
+                                                                           final String brokerAddr,// 1
+                                                                           final String filterServerAddr// 2
     ) throws RemotingCommandException, RemotingConnectException, RemotingSendRequestException,
             RemotingTimeoutException, InterruptedException, MQBrokerException {
+
         RegisterFilterServerRequestHeader requestHeader = new RegisterFilterServerRequestHeader();
         requestHeader.setFilterServerAddr(filterServerAddr);
-        RemotingCommand request =
-                RemotingCommand.createRequestCommand(RequestCode.REGISTER_FILTER_SERVER, requestHeader);
+        RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.REGISTER_FILTER_SERVER, requestHeader);
 
         RemotingCommand response = this.remotingClient.invokeSync(brokerAddr, request, 3000);
         assert response != null;
         switch (response.getCode()) {
-        case ResponseCode.SUCCESS: {
-            RegisterFilterServerResponseHeader responseHeader =
-                    (RegisterFilterServerResponseHeader) response
-                        .decodeCommandCustomHeader(RegisterFilterServerResponseHeader.class);
+            case ResponseCode.SUCCESS: {
+                RegisterFilterServerResponseHeader responseHeader =
+                        (RegisterFilterServerResponseHeader) response
+                                .decodeCommandCustomHeader(RegisterFilterServerResponseHeader.class);
 
-            return responseHeader;
-        }
-        default:
-            break;
+                return responseHeader;
+            }
+            default:
+                break;
         }
 
         throw new MQBrokerException(response.getCode(), response.getRemark());

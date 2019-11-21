@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.client.consumer.store;
 
@@ -64,6 +64,13 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
     }
 
 
+    /**
+     * 更新存储在本地的Offset值
+     *
+     * @param mq           消息队列
+     * @param offset       Offset值
+     * @param increaseOnly 是否只增加，如果为false，则值被替换成参数主公的offset，否则是在原来基础上增加
+     */
     @Override
     public void updateOffset(MessageQueue mq, long offset, boolean increaseOnly) {
         if (mq != null) {
@@ -80,9 +87,17 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
                 }
             }
         }
+
     }
 
 
+    /**
+     * 读取Offset值
+     *
+     * @param mq   读取哪个MessageQueue的Offset值
+     * @param type 读取方式，从内存还是从服务端还是其他
+     * @return
+     */
     @Override
     public long readOffset(final MessageQueue mq, final ReadOffsetType type) {
         if (mq != null) {
@@ -98,9 +113,18 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
                 }
                 case READ_FROM_STORE: {
                     try {
+                        /**
+                         * 从Broker读取Offset
+                         */
                         long brokerOffset = this.fetchConsumeOffsetFromBroker(mq);
+
+                        /**
+                         * 更新到本地内存（直接覆盖本地内存的值）
+                         */
                         AtomicLong offset = new AtomicLong(brokerOffset);
+                        // false 表示直接覆盖本地内存的值
                         this.updateOffset(mq, offset.get(), false);
+
                         return brokerOffset;
                     }
                     // No offset in broker
@@ -121,7 +145,11 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
         return -1;
     }
 
-
+    /**
+     * 更新Queue Offset信息到broker
+     *
+     * @param mqs
+     */
     @Override
     public void persistAll(Set<MessageQueue> mqs) {
         if (null == mqs || mqs.isEmpty())
@@ -132,6 +160,9 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
 
         if (mqs != null && !mqs.isEmpty()) {
             for (MessageQueue mq : this.offsetTable.keySet()) {
+                /**
+                 * 从本地获取Offset信息
+                 */
                 AtomicLong offset = this.offsetTable.get(mq);
                 if (offset != null) {
                     if (mqs.contains(mq)) {
@@ -148,6 +179,9 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
                             log.error("updateConsumeOffsetToBroker exception, " + mq.toString(), e);
                         }
                     } else {
+                        /**
+                         * 移除不再使用的Queue Offset信息
+                         */
                         unusedMQ.add(mq);
                     }
                 }

@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.client.impl.consumer;
 
@@ -41,12 +41,19 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public abstract class RebalanceImpl {
     protected static final Logger log = ClientLogger.getLog();
-    protected final ConcurrentHashMap<MessageQueue, ProcessQueue> processQueueTable =
-            new ConcurrentHashMap<MessageQueue, ProcessQueue>(64);
-    protected final ConcurrentHashMap<String/* topic */, Set<MessageQueue>> topicSubscribeInfoTable =
-            new ConcurrentHashMap<String, Set<MessageQueue>>();
-    protected final ConcurrentHashMap<String /* topic */, SubscriptionData> subscriptionInner =
-            new ConcurrentHashMap<String, SubscriptionData>();
+    /**
+     * ProcessQueue
+     * Key:MessageQueue
+     * Value:ProcessQueue
+     */
+    protected final ConcurrentHashMap<MessageQueue, ProcessQueue> processQueueTable = new ConcurrentHashMap<MessageQueue, ProcessQueue>(64);
+
+    /**
+     * Topic与MessgaeQueue的对应关系
+     */
+    protected final ConcurrentHashMap<String/* topic */, Set<MessageQueue>> topicSubscribeInfoTable = new ConcurrentHashMap<String, Set<MessageQueue>>();
+
+    protected final ConcurrentHashMap<String /* topic */, SubscriptionData> subscriptionInner = new ConcurrentHashMap<String, SubscriptionData>();
     protected String consumerGroup;
     protected MessageModel messageModel;
     protected AllocateMessageQueueStrategy allocateMessageQueueStrategy;
@@ -65,9 +72,19 @@ public abstract class RebalanceImpl {
     public abstract ConsumeType consumeType();
 
 
+    /**
+     * 解锁
+     *
+     * @param mq
+     * @param oneway
+     */
     public void unlock(final MessageQueue mq, final boolean oneway) {
+        /**
+         * 查找当前MessageQueue的BrokerName对应的主节点
+         */
         FindBrokerResult findBrokerResult =
                 this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(), MixAll.MASTER_ID, true);
+
         if (findBrokerResult != null) {
             UnlockBatchRequestBody requestBody = new UnlockBatchRequestBody();
             requestBody.setConsumerGroup(this.consumerGroup);
@@ -231,6 +248,10 @@ public abstract class RebalanceImpl {
     }
 
 
+    /**
+     * 重新负载
+     * 获取全部的订阅信息，从订阅信息中找到所有的Topic，每一个Topic都重新负载
+     */
     public void doRebalance() {
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
         if (subTable != null) {
@@ -246,10 +267,18 @@ public abstract class RebalanceImpl {
             }
         }
 
+        /**
+         * 重新分配之后，移除不再属于当前实例的MessageQueue和ProcessQueue
+         */
         this.truncateMessageQueueNotMyTopic();
     }
 
 
+    /**
+     * 根据Topic 重新进行MessageQueue负载
+     *
+     * @param topic
+     */
     private void rebalanceByTopic(final String topic) {
         switch (messageModel) {
             case BROADCASTING: {
@@ -270,8 +299,15 @@ public abstract class RebalanceImpl {
                 break;
             }
             case CLUSTERING: {
+                /**
+                 * 获取Topic下的所有MessageQueue
+                 */
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
+                /**
+                 * 获取所有的消费者ID
+                 */
                 List<String> cidAll = this.mQClientFactory.findConsumerIdList(topic, consumerGroup);
+
                 if (null == mqSet) {
                     if (!topic.startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
                         log.warn("doRebalance, {}, but the topic[{}] not exist.", consumerGroup, topic);
@@ -289,15 +325,18 @@ public abstract class RebalanceImpl {
                     Collections.sort(mqAll);
                     Collections.sort(cidAll);
 
+                    /**
+                     * 按策略分配，得到分配给当前实例的MessageQueue
+                     */
                     AllocateMessageQueueStrategy strategy = this.allocateMessageQueueStrategy;
 
                     List<MessageQueue> allocateResult = null;
                     try {
                         allocateResult = strategy.allocate(//
-                                this.consumerGroup, //
-                                this.mQClientFactory.getClientId(), //
-                                mqAll,//
-                                cidAll);
+                                this.consumerGroup, // 消费组
+                                this.mQClientFactory.getClientId(), // 当前消费者ID
+                                mqAll,// Topic下所有的MessageQueue
+                                cidAll); //当前Topic下，当前消费组中所有的消费者ID
                     } catch (Throwable e) {
                         log.error(
                                 "AllocateMessageQueueStrategy.allocate Exception. allocateMessageQueueStrategyName={}",
@@ -310,6 +349,9 @@ public abstract class RebalanceImpl {
                         allocateResultSet.addAll(allocateResult);
                     }
 
+                    /**
+                     * 新分配的MessageQueue做相应更新
+                     */
                     boolean changed = this.updateProcessQueueTableInRebalance(topic, allocateResultSet);
                     if (changed) {
                         log.info(
@@ -320,6 +362,9 @@ public abstract class RebalanceImpl {
                                 strategy.getName(), consumerGroup, topic, this.mQClientFactory.getClientId(),
                                 allocateResultSet.size(), mqAll.size(), cidAll.size(), allocateResultSet);
 
+                        /**
+                         * 回调MessageQueue变化事件
+                         */
                         this.messageQueueChanged(topic, mqSet, allocateResultSet);
                     }
                 }
@@ -345,7 +390,13 @@ public abstract class RebalanceImpl {
         }
     }
 
-
+    /**
+     * 更新 ProcessQueue
+     *
+     * @param topic
+     * @param mqSet
+     * @return
+     */
     private boolean updateProcessQueueTableInRebalance(final String topic, final Set<MessageQueue> mqSet) {
         boolean changed = false;
 
@@ -356,19 +407,31 @@ public abstract class RebalanceImpl {
             ProcessQueue pq = next.getValue();
 
             if (mq.getTopic().equals(topic)) {
+                /**
+                 * Rebalance之后的mq集合不包含该MessageQueue,则将该MessageQueue对应的ProcessQueue删除
+                 */
                 if (!mqSet.contains(mq)) {
+
                     pq.setDropped(true);
+
                     if (this.removeUnnecessaryMessageQueue(mq, pq)) {
                         it.remove();
                         changed = true;
                         log.info("doRebalance, {}, remove unnecessary mq, {}", consumerGroup, mq);
                     }
-                }
-                else if (pq.isPullExpired()) {
+                } else if (pq.isPullExpired()) {
+                    /**
+                     * 如果Reblance之后的mq集合包含该MessageQueue,但是ProcessQueue已经太久没有拉取数据（上次拉取消息的时间距离现在超过设置时间）
+                     */
                     switch (this.consumeType()) {
                         case CONSUME_ACTIVELY:
                             break;
                         case CONSUME_PASSIVELY:
+                            /**
+                             * PushConsumer为被动消费
+                             * 如果是PUSH，则丢弃ProcessQueue
+                             * 同时删除MessageQueue
+                             */
                             pq.setDropped(true);
                             if (this.removeUnnecessaryMessageQueue(mq, pq)) {
                                 it.remove();
@@ -385,19 +448,32 @@ public abstract class RebalanceImpl {
             }
         }
 
+
+        /**
+         * 根据Rebalance之后的结果，重新分发PullRequest
+         * 新分配过来的MessgeQueue,需要新发起PullRequest
+         */
         List<PullRequest> pullRequestList = new ArrayList<PullRequest>();
         for (MessageQueue mq : mqSet) {
+            /**
+             * 新增PrccessQueue
+             */
             if (!this.processQueueTable.containsKey(mq)) {
                 PullRequest pullRequest = new PullRequest();
                 pullRequest.setConsumerGroup(consumerGroup);
                 pullRequest.setMessageQueue(mq);
+
                 pullRequest.setProcessQueue(new ProcessQueue());
 
+                /**
+                 * 计算当前MessageQueue应该从哪里开始拉取消息
+                 */
                 long nextOffset = this.computePullFromWhere(mq);
                 if (nextOffset >= 0) {
                     pullRequest.setNextOffset(nextOffset);
                     pullRequestList.add(pullRequest);
                     changed = true;
+
                     this.processQueueTable.put(mq, pullRequest.getProcessQueue());
                     log.info("doRebalance, {}, add a new mq, {}", consumerGroup, mq);
                 } else {
@@ -406,6 +482,9 @@ public abstract class RebalanceImpl {
             }
         }
 
+        /**
+         * 新分配的messageQueue，发起PullRequest
+         */
         this.dispatchPullRequest(pullRequestList);
 
         return changed;
@@ -421,6 +500,9 @@ public abstract class RebalanceImpl {
     public abstract long computePullFromWhere(final MessageQueue mq);
 
 
+    /**
+     * 移除不属于我的MessageQueue和ProcessQueue
+     */
     private void truncateMessageQueueNotMyTopic() {
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
 

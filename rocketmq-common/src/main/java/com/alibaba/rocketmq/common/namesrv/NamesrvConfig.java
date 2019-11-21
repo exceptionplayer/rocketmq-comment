@@ -34,9 +34,19 @@ import java.io.File;
  */
 public class NamesrvConfig {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.NamesrvLoggerName);
+
+    /**
+     * RocketMQ工作目录
+     */
     private String rocketmqHome = System.getProperty(MixAll.ROCKETMQ_HOME_PROPERTY, System.getenv(MixAll.ROCKETMQ_HOME_ENV));
+
     private String kvConfigPath = System.getProperty("user.home") + File.separator + "namesrv" + File.separator + "kvConfig.json";
+
     private String productEnvName = "center";
+
+    /**
+     * 是否测试
+     */
     private boolean clusterTest = false;
 
 

@@ -402,6 +402,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     }
 
 
+
     @Override
     public void unsubscribe(String topic) {
         this.defaultMQPushConsumerImpl.unsubscribe(topic);

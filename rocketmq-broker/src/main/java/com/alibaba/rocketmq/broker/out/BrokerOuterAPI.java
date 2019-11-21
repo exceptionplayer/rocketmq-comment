@@ -116,12 +116,14 @@ public class BrokerOuterAPI {
             final boolean oneway// 8
     ) throws RemotingCommandException, MQBrokerException, RemotingConnectException,
             RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
+
         RegisterBrokerRequestHeader requestHeader = new RegisterBrokerRequestHeader();
         requestHeader.setBrokerAddr(brokerAddr);
         requestHeader.setBrokerId(brokerId);
         requestHeader.setBrokerName(brokerName);
         requestHeader.setClusterName(clusterName);
         requestHeader.setHaServerAddr(haServerAddr);
+
         RemotingCommand request =
                 RemotingCommand.createRequestCommand(RequestCode.REGISTER_BROKER, requestHeader);
 
@@ -146,10 +148,12 @@ public class BrokerOuterAPI {
             RegisterBrokerResponseHeader responseHeader =
                     (RegisterBrokerResponseHeader) response
                         .decodeCommandCustomHeader(RegisterBrokerResponseHeader.class);
+
             RegisterBrokerResult result = new RegisterBrokerResult();
             result.setMasterAddr(responseHeader.getMasterAddr());
             result.setHaServerAddr(responseHeader.getHaServerAddr());
             result.setHaServerAddr(responseHeader.getHaServerAddr());
+
             if (response.getBody() != null) {
                 result.setKvTable(KVTable.decode(response.getBody(), KVTable.class));
             }
@@ -163,6 +167,18 @@ public class BrokerOuterAPI {
     }
 
 
+    /**
+     * Broker注册到所有的NameServer中
+     * @param clusterName 集群名称
+     * @param brokerAddr Broker地址
+     * @param brokerName BrokerName
+     * @param brokerId BrokerID
+     * @param haServerAddr HAServer地址
+     * @param topicConfigWrapper Broker上的Topic配置
+     * @param filterServerList filterServer服务地址列表
+     * @param oneway 是否单向请求
+     * @return
+     */
     public RegisterBrokerResult registerBrokerAll(//
             final String clusterName,// 1
             final String brokerAddr,// 2

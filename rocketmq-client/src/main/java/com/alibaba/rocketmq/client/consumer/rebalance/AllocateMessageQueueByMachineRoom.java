@@ -56,8 +56,10 @@ public class AllocateMessageQueueByMachineRoom implements AllocateMessageQueueSt
         // Todo cid
         int mod = premqAll.size() / cidAll.size();
         int rem = premqAll.size() % cidAll.size();
+
         int startindex = mod * currentIndex;
         int endindex = startindex + mod;
+
         for (int i = startindex; i < endindex; i++) {
             result.add(mqAll.get(i));
         }

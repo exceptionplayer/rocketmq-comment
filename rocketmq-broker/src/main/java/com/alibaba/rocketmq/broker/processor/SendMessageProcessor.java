@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.broker.processor;
 
@@ -70,18 +70,28 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
     public RemotingCommand processRequest(ChannelHandlerContext ctx, RemotingCommand request) throws RemotingCommandException {
         SendMessageContext mqtraceContext = null;
         switch (request.getCode()) {
-        case RequestCode.CONSUMER_SEND_MSG_BACK:
-            return this.consumerSendMsgBack(ctx, request);
-        default:
-            SendMessageRequestHeader requestHeader = parseRequestHeader(request);
-            if (requestHeader == null) {
-                return null;
-            }
-            mqtraceContext = buildMsgContext(ctx, requestHeader);
-            this.executeSendMessageHookBefore(ctx, request, mqtraceContext);
-            final RemotingCommand response = this.sendMessage(ctx, request, mqtraceContext, requestHeader);
-            this.executeSendMessageHookAfter(response, mqtraceContext);
-            return response;
+            /**
+             * 消费方发送回来的消息，单独处理
+             */
+            case RequestCode.CONSUMER_SEND_MSG_BACK:
+                return this.consumerSendMsgBack(ctx, request);
+            default:
+
+                SendMessageRequestHeader requestHeader = parseRequestHeader(request);
+                if (requestHeader == null) {
+                    return null;
+                }
+
+                mqtraceContext = buildMsgContext(ctx, requestHeader);
+                this.executeSendMessageHookBefore(ctx, request, mqtraceContext);
+
+                /**
+                 * 发送消息
+                 */
+                final RemotingCommand response = this.sendMessage(ctx, request, mqtraceContext, requestHeader);
+
+                this.executeSendMessageHookAfter(response, mqtraceContext);
+                return response;
         }
     }
 
@@ -136,9 +146,9 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         }
 
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(//
-            newTopic,//
-            subscriptionGroupConfig.getRetryQueueNums(), //
-            PermName.PERM_WRITE | PermName.PERM_READ, topicSysFlag);
+                newTopic,//
+                subscriptionGroupConfig.getRetryQueueNums(), //
+                PermName.PERM_WRITE | PermName.PERM_READ, topicSysFlag);
         if (null == topicConfig) {
             response.setCode(ResponseCode.SYSTEM_ERROR);
             response.setRemark("topic[" + newTopic + "] not exist");
@@ -172,16 +182,15 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             queueIdInt = Math.abs(this.random.nextInt() % 99999999) % DLQ_NUMS_PER_GROUP;
 
             topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(newTopic, //
-                DLQ_NUMS_PER_GROUP,
-                PermName.PERM_WRITE, 0
-                );
+                    DLQ_NUMS_PER_GROUP,
+                    PermName.PERM_WRITE, 0
+            );
             if (null == topicConfig) {
                 response.setCode(ResponseCode.SYSTEM_ERROR);
                 response.setRemark("topic[" + newTopic + "] not exist");
                 return response;
             }
-        }
-        else {
+        } else {
             if (0 == delayLevel) {
                 delayLevel = 3 + msgExt.getReconsumeTimes();
             }
@@ -210,36 +219,36 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         PutMessageResult putMessageResult = this.brokerController.getMessageStore().putMessage(msgInner);
         if (putMessageResult != null) {
             switch (putMessageResult.getPutMessageStatus()) {
-            case PUT_OK:
-                String backTopic = msgExt.getTopic();
-                String correctTopic = msgExt.getProperty(MessageConst.PROPERTY_RETRY_TOPIC);
-                if (correctTopic != null) {
-                    backTopic = correctTopic;
-                }
+                case PUT_OK:
+                    String backTopic = msgExt.getTopic();
+                    String correctTopic = msgExt.getProperty(MessageConst.PROPERTY_RETRY_TOPIC);
+                    if (correctTopic != null) {
+                        backTopic = correctTopic;
+                    }
 
-                if (!this.brokerController.getBrokerConfig().isHighSpeedMode()) {
-                    this.brokerController.getBrokerStatsManager().incSendBackNums(requestHeader.getGroup(), backTopic);
+                    if (!this.brokerController.getBrokerConfig().isHighSpeedMode()) {
+                        this.brokerController.getBrokerStatsManager().incSendBackNums(requestHeader.getGroup(), backTopic);
 
+                        // For commercial
+                        int incValue =
+                                (int) Math.ceil(putMessageResult.getAppendMessageResult().getWroteBytes() / BrokerStatsManager.SIZE_PER_COUNT);
+                        this.brokerController.getBrokerStatsManager().incCommercialGroupSndBckTimes(requestHeader.getGroup(), backTopic,
+                                BrokerStatsManager.StatsType.SEND_BACK_SUCCESS.toString(), incValue);
+
+                        this.brokerController.getBrokerStatsManager().incCommercialGroupSndBckSize(requestHeader.getGroup(), backTopic,
+                                BrokerStatsManager.StatsType.SEND_BACK_SUCCESS.toString(),
+                                putMessageResult.getAppendMessageResult().getWroteBytes());
+                    }
+
+                    response.setCode(ResponseCode.SUCCESS);
+                    response.setRemark(null);
+
+                    return response;
+                default:
                     // For commercial
-                    int incValue =
-                            (int) Math.ceil(putMessageResult.getAppendMessageResult().getWroteBytes() / BrokerStatsManager.SIZE_PER_COUNT);
-                    this.brokerController.getBrokerStatsManager().incCommercialGroupSndBckTimes(requestHeader.getGroup(), backTopic,
-                        BrokerStatsManager.StatsType.SEND_BACK_SUCCESS.toString(), incValue);
-
-                    this.brokerController.getBrokerStatsManager().incCommercialGroupSndBckSize(requestHeader.getGroup(), backTopic,
-                        BrokerStatsManager.StatsType.SEND_BACK_SUCCESS.toString(),
-                        putMessageResult.getAppendMessageResult().getWroteBytes());
-                }
-
-                response.setCode(ResponseCode.SUCCESS);
-                response.setRemark(null);
-
-                return response;
-            default:
-                // For commercial
-                this.brokerController.getBrokerStatsManager().incCommercialGroupSndBckTimes(requestHeader.getGroup(), msgExt.getTopic(),
-                    BrokerStatsManager.StatsType.SEND_BACK_FAILURE.toString(), 1);
-                break;
+                    this.brokerController.getBrokerStatsManager().incCommercialGroupSndBckTimes(requestHeader.getGroup(), msgExt.getTopic(),
+                            BrokerStatsManager.StatsType.SEND_BACK_FAILURE.toString(), 1);
+                    break;
             }
 
             response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -270,10 +279,13 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
 
 
     private RemotingCommand sendMessage(final ChannelHandlerContext ctx, //
-            final RemotingCommand request,//
-            final SendMessageContext mqtraceContext,//
-            final SendMessageRequestHeader requestHeader) throws RemotingCommandException {
+                                        final RemotingCommand request,//
+                                        final SendMessageContext mqtraceContext,//
+                                        final SendMessageRequestHeader requestHeader) throws RemotingCommandException {
 
+        /**
+         * 构造响应
+         */
         final RemotingCommand response = RemotingCommand.createResponseCommand(SendMessageResponseHeader.class);
         final SendMessageResponseHeader responseHeader = (SendMessageResponseHeader) response.readCustomHeader();
 
@@ -282,21 +294,46 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         if (log.isDebugEnabled()) {
             log.debug("receive SendMessage request command, " + request);
         }
+
         response.setCode(-1);
+
+        /**
+         * 消息合法性检查
+         * 如果没有TopicConfig，则创建TopicConfig
+         * 如果Topic创建失败（不允许自动创建或者其他原因），response设置失败，后面直接返回客户端
+         */
         super.msgCheck(ctx, requestHeader, response);
+
+        /**
+         * 如果校验出问题，直接返回
+         */
         if (response.getCode() != -1) {
             return response;
         }
 
+
+        /**
+         * 存储消息
+         */
+
         final byte[] body = request.getBody();
 
+        /**
+         * 队列ID
+         */
         int queueIdInt = requestHeader.getQueueId();
+        /**
+         * 获取TopicConfig
+         */
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().selectTopicConfig(requestHeader.getTopic());
         if (queueIdInt < 0) {
             queueIdInt = Math.abs(this.random.nextInt() % 99999999) % topicConfig.getWriteQueueNums();
         }
 
         int sysFlag = requestHeader.getSysFlag();
+        /**
+         * Topic是否支持多标签过滤
+         */
         if (TopicFilterType.MULTI_TAG == topicConfig.getTopicFilterType()) {
             sysFlag |= MessageSysFlag.MultiTagsFlag;
         }
@@ -305,17 +342,37 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         msgInner.setTopic(requestHeader.getTopic());
         msgInner.setBody(body);
         msgInner.setFlag(requestHeader.getFlag());
+
+        /**
+         * 设置消息属性
+         */
         MessageAccessor.setProperties(msgInner, MessageDecoder.string2messageProperties(requestHeader.getProperties()));
         msgInner.setPropertiesString(requestHeader.getProperties());
+        /**
+         * 设置消息的Tag的HashCode
+         */
         msgInner.setTagsCode(MessageExtBrokerInner.tagsString2tagsCode(topicConfig.getTopicFilterType(), msgInner.getTags()));
 
         msgInner.setQueueId(queueIdInt);
         msgInner.setSysFlag(sysFlag);
         msgInner.setBornTimestamp(requestHeader.getBornTimestamp());
+
+        /**
+         * 生产者所在机器
+         */
         msgInner.setBornHost(ctx.channel().remoteAddress());
+        /**
+         * 消息存储机器
+         */
         msgInner.setStoreHost(this.getStoreHost());
+        /**
+         * 重复消费次数
+         */
         msgInner.setReconsumeTimes(requestHeader.getReconsumeTimes() == null ? 0 : requestHeader.getReconsumeTimes());
 
+        /**
+         * 当前机器是否拒绝事务消息
+         */
         if (this.brokerController.getBrokerConfig().isRejectTransactionMessage()) {
             String traFlag = msgInner.getProperty(MessageConst.PROPERTY_TRANSACTION_PREPARED);
             if (traFlag != null) {
@@ -326,94 +383,132 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             }
         }
 
+        /**
+         * 消息存储
+         */
         PutMessageResult putMessageResult = this.brokerController.getMessageStore().putMessage(msgInner);
+
+        /**
+         * 处理消息存储结果
+         */
         if (putMessageResult != null) {
             boolean sendOK = false;
 
+            /**
+             * 设置响应Code
+             */
             switch (putMessageResult.getPutMessageStatus()) {
-            // Success
-            case PUT_OK:
-                sendOK = true;
-                response.setCode(ResponseCode.SUCCESS);
-                break;
-            case FLUSH_DISK_TIMEOUT:
-                response.setCode(ResponseCode.FLUSH_DISK_TIMEOUT);
-                sendOK = true;
-                break;
-            case FLUSH_SLAVE_TIMEOUT:
-                response.setCode(ResponseCode.FLUSH_SLAVE_TIMEOUT);
-                sendOK = true;
-                break;
-            case SLAVE_NOT_AVAILABLE:
-                response.setCode(ResponseCode.SLAVE_NOT_AVAILABLE);
-                sendOK = true;
-                break;
+                // Success
+                case PUT_OK:
+                    sendOK = true;
+                    response.setCode(ResponseCode.SUCCESS);
+                    break;
+                case FLUSH_DISK_TIMEOUT:
+                    response.setCode(ResponseCode.FLUSH_DISK_TIMEOUT);
+                    sendOK = true;
+                    break;
+                case FLUSH_SLAVE_TIMEOUT:
+                    response.setCode(ResponseCode.FLUSH_SLAVE_TIMEOUT);
+                    sendOK = true;
+                    break;
+                case SLAVE_NOT_AVAILABLE:
+                    response.setCode(ResponseCode.SLAVE_NOT_AVAILABLE);
+                    sendOK = true;
+                    break;
 
-            // Failed
-            case CREATE_MAPEDFILE_FAILED:
-                response.setCode(ResponseCode.SYSTEM_ERROR);
-                response.setRemark("create maped file failed, please make sure OS and JDK both 64bit.");
-                break;
-            case MESSAGE_ILLEGAL:
-            case PROPERTIES_SIZE_EXCEEDED:
-                response.setCode(ResponseCode.MESSAGE_ILLEGAL);
-                response
-                    .setRemark("the message is illegal, maybe msg body or properties length not matched. msg body length limit 128k, msg properties length limit 32k.");
-                break;
-            case SERVICE_NOT_AVAILABLE:
-                response.setCode(ResponseCode.SERVICE_NOT_AVAILABLE);
-                response.setRemark("service not available now, maybe disk full, " + diskUtil()
-                        + ", maybe your broker machine memory too small.");
-                break;
-            case UNKNOWN_ERROR:
-                response.setCode(ResponseCode.SYSTEM_ERROR);
-                response.setRemark("UNKNOWN_ERROR");
-                break;
-            default:
-                response.setCode(ResponseCode.SYSTEM_ERROR);
-                response.setRemark("UNKNOWN_ERROR DEFAULT");
-                break;
+                // Failed
+                case CREATE_MAPEDFILE_FAILED:
+                    response.setCode(ResponseCode.SYSTEM_ERROR);
+                    response.setRemark("create maped file failed, please make sure OS and JDK both 64bit.");
+                    break;
+                case MESSAGE_ILLEGAL:
+                case PROPERTIES_SIZE_EXCEEDED:
+                    response.setCode(ResponseCode.MESSAGE_ILLEGAL);
+                    response
+                            .setRemark("the message is illegal, maybe msg body or properties length not matched. msg body length limit 128k, msg properties length limit 32k.");
+                    break;
+                case SERVICE_NOT_AVAILABLE:
+                    response.setCode(ResponseCode.SERVICE_NOT_AVAILABLE);
+                    response.setRemark("service not available now, maybe disk full, " + diskUtil()
+                            + ", maybe your broker machine memory too small.");
+                    break;
+                case UNKNOWN_ERROR:
+                    response.setCode(ResponseCode.SYSTEM_ERROR);
+                    response.setRemark("UNKNOWN_ERROR");
+                    break;
+                default:
+                    response.setCode(ResponseCode.SYSTEM_ERROR);
+                    response.setRemark("UNKNOWN_ERROR DEFAULT");
+                    break;
             }
 
+            /**
+             * 如果消息存储成功
+             */
             if (sendOK) {
+                /**
+                 * 更新统计信息
+                 */
                 this.brokerController.getBrokerStatsManager().incTopicPutNums(msgInner.getTopic());
-                this.brokerController.getBrokerStatsManager().incTopicPutSize(msgInner.getTopic(),
-                    putMessageResult.getAppendMessageResult().getWroteBytes());
+                this.brokerController.getBrokerStatsManager().incTopicPutSize(msgInner.getTopic(), putMessageResult.getAppendMessageResult().getWroteBytes());
                 this.brokerController.getBrokerStatsManager().incBrokerPutNums();
 
+                /**
+                 * 如果Broker不是高速模式
+                 */
                 if (!this.brokerController.getBrokerConfig().isHighSpeedMode()) {
                     // For commercial
-                    int incValue =
-                            (int) Math.ceil(putMessageResult.getAppendMessageResult().getWroteBytes() / BrokerStatsManager.SIZE_PER_COUNT);
+                    int incValue = (int) Math.ceil(putMessageResult.getAppendMessageResult().getWroteBytes() / BrokerStatsManager.SIZE_PER_COUNT);
                     this.brokerController.getBrokerStatsManager().incCommercialTopicSendTimes(requestHeader.getProducerGroup(),
-                        msgInner.getTopic(), BrokerStatsManager.StatsType.SEND_SUCCESS.toString(), incValue);
+                            msgInner.getTopic(), BrokerStatsManager.StatsType.SEND_SUCCESS.toString(), incValue);
 
                     this.brokerController.getBrokerStatsManager().incCommercialTopicSendSize(requestHeader.getProducerGroup(),
-                        msgInner.getTopic(), BrokerStatsManager.StatsType.SEND_SUCCESS.toString(),
-                        putMessageResult.getAppendMessageResult().getWroteBytes());
+                            msgInner.getTopic(), BrokerStatsManager.StatsType.SEND_SUCCESS.toString(),
+                            putMessageResult.getAppendMessageResult().getWroteBytes());
                 }
+
+                /**
+                 * 设置响应数据
+                 */
+
                 response.setRemark(null);
 
+                /**
+                 * 消息ID
+                 */
                 responseHeader.setMsgId(putMessageResult.getAppendMessageResult().getMsgId());
+                /**
+                 * 队列ID
+                 */
                 responseHeader.setQueueId(queueIdInt);
+                /**
+                 * 队列偏移量，逻辑偏移量
+                 */
                 responseHeader.setQueueOffset(putMessageResult.getAppendMessageResult().getLogicsOffset());
 
+                /**
+                 * 发送响应
+                 */
                 doResponse(ctx, request, response);
 
+                /**
+                 * 执行回调
+                 */
                 if (hasSendMessageHook()) {
                     mqtraceContext.setMsgId(responseHeader.getMsgId());
                     mqtraceContext.setQueueId(responseHeader.getQueueId());
                     mqtraceContext.setQueueOffset(responseHeader.getQueueOffset());
                 }
                 return null;
-            }
-            else {
+            } else {
+                /**
+                 * 发送失败，也进行统计
+                 */
                 // For commercial
                 this.brokerController.getBrokerStatsManager().incCommercialTopicSendTimes(requestHeader.getProducerGroup(),
-                    msgInner.getTopic(), BrokerStatsManager.StatsType.SEND_FAILURE.toString(), 1);
+                        msgInner.getTopic(), BrokerStatsManager.StatsType.SEND_FAILURE.toString(), 1);
             }
-        }
-        else {
+        } else {
             response.setCode(ResponseCode.SYSTEM_ERROR);
             response.setRemark("store putMessage return null");
         }
@@ -455,8 +550,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             for (ConsumeMessageHook hook : this.consumeMessageHookList) {
                 try {
                     hook.consumeMessageAfter(context);
-                }
-                catch (Throwable e) {
+                } catch (Throwable e) {
                 }
             }
         }

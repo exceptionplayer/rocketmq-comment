@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.filtersrv;
 
@@ -41,6 +41,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
+ * FilterServer启动
+ *
+ * FilterServer的启动是通过Broker中执行命令启动的
+ *
+ * 所以：FilterServer与启动它的Broker在一台机器上
  *
  * @author shijia.wxr
  */
@@ -69,8 +74,7 @@ public class FiltersrvStartup {
     public static FiltersrvController start(FiltersrvController controller) {
         try {
             controller.start();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             System.exit(-1);
         }
@@ -100,7 +104,7 @@ public class FiltersrvStartup {
             Options options = ServerUtil.buildCommandlineOptions(new Options());
             final CommandLine commandLine =
                     ServerUtil.parseCmdLine("mqfiltersrv", args, buildCommandlineOptions(options),
-                        new PosixParser());
+                            new PosixParser());
             if (null == commandLine) {
                 System.exit(-1);
                 return null;
@@ -130,7 +134,7 @@ public class FiltersrvStartup {
 
             nettyServerConfig.setServerAsyncSemaphoreValue(filtersrvConfig.getFsServerAsyncSemaphoreValue());
             nettyServerConfig.setServerCallbackExecutorThreads(filtersrvConfig
-                .getFsServerCallbackExecutorThreads());
+                    .getFsServerCallbackExecutorThreads());
             nettyServerConfig.setServerWorkerThreads(filtersrvConfig.getFsServerWorkerThreads());
 
             if (commandLine.hasOption('p')) {
@@ -183,8 +187,7 @@ public class FiltersrvStartup {
             }, "ShutdownHook"));
 
             return controller;
-        }
-        catch (Throwable e) {
+        } catch (Throwable e) {
             e.printStackTrace();
             System.exit(-1);
         }
