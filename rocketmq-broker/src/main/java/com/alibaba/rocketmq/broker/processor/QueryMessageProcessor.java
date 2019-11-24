@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.broker.processor;
 
@@ -58,12 +58,12 @@ public class QueryMessageProcessor implements NettyRequestProcessor {
     public RemotingCommand processRequest(ChannelHandlerContext ctx, RemotingCommand request)
             throws RemotingCommandException {
         switch (request.getCode()) {
-        case RequestCode.QUERY_MESSAGE:
-            return this.queryMessage(ctx, request);
-        case RequestCode.VIEW_MESSAGE_BY_ID:
-            return this.viewMessageById(ctx, request);
-        default:
-            break;
+            case RequestCode.QUERY_MESSAGE:
+                return this.queryMessage(ctx, request);
+            case RequestCode.VIEW_MESSAGE_BY_ID:
+                return this.viewMessageById(ctx, request);
+            default:
+                break;
         }
 
         return null;
@@ -78,14 +78,14 @@ public class QueryMessageProcessor implements NettyRequestProcessor {
                 (QueryMessageResponseHeader) response.readCustomHeader();
         final QueryMessageRequestHeader requestHeader =
                 (QueryMessageRequestHeader) request
-                    .decodeCommandCustomHeader(QueryMessageRequestHeader.class);
+                        .decodeCommandCustomHeader(QueryMessageRequestHeader.class);
 
         response.setOpaque(request.getOpaque());
 
         final QueryMessageResult queryMessageResult =
                 this.brokerController.getMessageStore().queryMessage(requestHeader.getTopic(),
-                    requestHeader.getKey(), requestHeader.getMaxNum(), requestHeader.getBeginTimestamp(),
-                    requestHeader.getEndTimestamp());
+                        requestHeader.getKey(), requestHeader.getMaxNum(), requestHeader.getBeginTimestamp(),
+                        requestHeader.getEndTimestamp());
         assert queryMessageResult != null;
 
         responseHeader.setIndexLastUpdatePhyoffset(queryMessageResult.getIndexLastUpdatePhyoffset());
@@ -98,7 +98,7 @@ public class QueryMessageProcessor implements NettyRequestProcessor {
             try {
                 FileRegion fileRegion =
                         new QueryMessageTransfer(response.encodeHeader(queryMessageResult
-                            .getBufferTotalSize()), queryMessageResult);
+                                .getBufferTotalSize()), queryMessageResult);
                 ctx.channel().writeAndFlush(fileRegion).addListener(new ChannelFutureListener() {
                     @Override
                     public void operationComplete(ChannelFuture future) throws Exception {
@@ -108,8 +108,7 @@ public class QueryMessageProcessor implements NettyRequestProcessor {
                         }
                     }
                 });
-            }
-            catch (Throwable e) {
+            } catch (Throwable e) {
                 log.error("", e);
                 queryMessageResult.release();
             }
@@ -123,6 +122,13 @@ public class QueryMessageProcessor implements NettyRequestProcessor {
     }
 
 
+    /**
+     * 根据消息ID查找消息
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     public RemotingCommand viewMessageById(ChannelHandlerContext ctx, RemotingCommand request)
             throws RemotingCommandException {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
@@ -133,14 +139,16 @@ public class QueryMessageProcessor implements NettyRequestProcessor {
 
         final SelectMapedBufferResult selectMapedBufferResult =
                 this.brokerController.getMessageStore().selectOneMessageByOffset(requestHeader.getOffset());
+
         if (selectMapedBufferResult != null) {
             response.setCode(ResponseCode.SUCCESS);
             response.setRemark(null);
 
             try {
-                FileRegion fileRegion =
-                        new OneMessageTransfer(response.encodeHeader(selectMapedBufferResult.getSize()),
-                            selectMapedBufferResult);
+
+                FileRegion fileRegion = new OneMessageTransfer(response.encodeHeader(selectMapedBufferResult.getSize()),
+                                selectMapedBufferResult);
+
                 ctx.channel().writeAndFlush(fileRegion).addListener(new ChannelFutureListener() {
                     @Override
                     public void operationComplete(ChannelFuture future) throws Exception {
@@ -150,15 +158,14 @@ public class QueryMessageProcessor implements NettyRequestProcessor {
                         }
                     }
                 });
-            }
-            catch (Throwable e) {
+
+            } catch (Throwable e) {
                 log.error("", e);
                 selectMapedBufferResult.release();
             }
 
             return null;
-        }
-        else {
+        } else {
             response.setCode(ResponseCode.SYSTEM_ERROR);
             response.setRemark("can not find message by the offset, " + requestHeader.getOffset());
         }

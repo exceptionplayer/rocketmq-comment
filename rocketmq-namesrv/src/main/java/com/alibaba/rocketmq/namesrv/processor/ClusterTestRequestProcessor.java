@@ -43,10 +43,12 @@ public class ClusterTestRequestProcessor extends DefaultRequestProcessor {
 
     public ClusterTestRequestProcessor(NamesrvController namesrvController, String productEnvName) {
         super(namesrvController);
+
         this.productEnvName = productEnvName;
         adminExt = new DefaultMQAdminExt();
         adminExt.setInstanceName("CLUSTER_TEST_NS_INS_" + productEnvName);
         adminExt.setUnitName(productEnvName);
+
         try {
             adminExt.start();
         }

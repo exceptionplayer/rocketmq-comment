@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.store;
 
@@ -31,34 +31,85 @@ import java.util.concurrent.locks.ReentrantLock;
 
 
 /**
+ * 存储消息统计服务
+ *
  * @author shijia.wxr
  */
 public class StoreStatsService extends ServiceThread {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.StoreLoggerName);
+
+    /**
+     * 快照保存时间间隔
+     */
     private static final int FrequencyOfSampling = 1000;
+
     private static final int MaxRecordsOfSampling = 60 * 10;
+    //打印TPS的间隔
     private static int PrintTPSInterval = 60 * 1;
+
+    /**
+     * PutMessage失败次数
+     */
     private final AtomicLong putMessageFailedTimes = new AtomicLong(0);
-    private final Map<String, AtomicLong> putMessageTopicTimesTotal =
-            new ConcurrentHashMap<String, AtomicLong>(128);
-    private final Map<String, AtomicLong> putMessageTopicSizeTotal =
-            new ConcurrentHashMap<String, AtomicLong>(128);
+
+    /**
+     * Topic 的消息PUT总次数、总大小
+     */
+    private final Map<String, AtomicLong> putMessageTopicTimesTotal = new ConcurrentHashMap<String, AtomicLong>(128);
+    private final Map<String, AtomicLong> putMessageTopicSizeTotal = new ConcurrentHashMap<String, AtomicLong>(128);
+
+    /**
+     * 查询消息 命中 次数
+     */
     private final AtomicLong getMessageTimesTotalFound = new AtomicLong(0);
+
+
+    /**
+     * TODO?
+     */
     private final AtomicLong getMessageTransferedMsgCount = new AtomicLong(0);
+
+    /**
+     * 查询消息 MISS 次数
+     */
     private final AtomicLong getMessageTimesTotalMiss = new AtomicLong(0);
+
+    /**
+     * PUT消息耗时矩阵
+     * 根据时间的不同区间分为不同的段，统计PUT耗时在每一段时间的出现次数
+     */
     private final AtomicLong[] putMessageDistributeTime = new AtomicLong[7];
+
+    /**
+     * 运行时快照
+     */
     private final LinkedList<CallSnapshot> putTimesList = new LinkedList<CallSnapshot>();
     private final LinkedList<CallSnapshot> getTimesFoundList = new LinkedList<CallSnapshot>();
     private final LinkedList<CallSnapshot> getTimesMissList = new LinkedList<CallSnapshot>();
     private final LinkedList<CallSnapshot> transferedMsgCountList = new LinkedList<CallSnapshot>();
+
+    /**
+     * 启动时间
+     */
     private long messageStoreBootTimestamp = System.currentTimeMillis();
+
+    /**
+     * 所有PUT消息操作中的最长的耗时时间
+     */
     private volatile long putMessageEntireTimeMax = 0;
+
+    /**
+     * 所有GET消息操作中的最长耗时时间
+     */
     private volatile long getMessageEntireTimeMax = 0;
+
     // for putMessageEntireTimeMax
     private ReentrantLock lockPut = new ReentrantLock();
     // for getMessageEntireTimeMax
     private ReentrantLock lockGet = new ReentrantLock();
+
     private volatile long dispatchMaxBuffer = 0;
+
     private ReentrantLock lockSampling = new ReentrantLock();
     private long lastPrintTimestamp = System.currentTimeMillis();
 
@@ -78,23 +129,17 @@ public class StoreStatsService extends ServiceThread {
     public void setPutMessageEntireTimeMax(long value) {
         if (value <= 0) {
             this.putMessageDistributeTime[0].incrementAndGet();
-        }
-        else if (value < 10) {
+        } else if (value < 10) {
             this.putMessageDistributeTime[1].incrementAndGet();
-        }
-        else if (value < 100) {
+        } else if (value < 100) {
             this.putMessageDistributeTime[2].incrementAndGet();
-        }
-        else if (value < 500) {
+        } else if (value < 500) {
             this.putMessageDistributeTime[3].incrementAndGet();
-        }
-        else if (value < 1000) {
+        } else if (value < 1000) {
             this.putMessageDistributeTime[4].incrementAndGet();
-        }
-        else if (value < 10000) {
+        } else if (value < 10000) {
             this.putMessageDistributeTime[5].incrementAndGet();
-        }
-        else {
+        } else {
             this.putMessageDistributeTime[6].incrementAndGet();
         }
 
@@ -115,8 +160,7 @@ public class StoreStatsService extends ServiceThread {
     public void setGetMessageEntireTimeMax(long value) {
         if (value > this.getMessageEntireTimeMax) {
             this.lockGet.lock();
-            this.getMessageEntireTimeMax =
-                    value > this.getMessageEntireTimeMax ? value : this.getMessageEntireTimeMax;
+            this.getMessageEntireTimeMax = value > this.getMessageEntireTimeMax ? value : this.getMessageEntireTimeMax;
             this.lockGet.unlock();
         }
     }
@@ -159,6 +203,12 @@ public class StoreStatsService extends ServiceThread {
     }
 
 
+    /**
+     * 获取put操作在不同时间段内的数量占总put操作数量的比例
+     *
+     * @param total
+     * @return
+     */
     private String getPutMessageDistributeTimeStringInfo(Long total) {
         final StringBuilder sb = new StringBuilder(512);
 
@@ -186,7 +236,7 @@ public class StoreStatsService extends ServiceThread {
         long hours = (time % DAY) / HOUR;
         long minutes = (time % HOUR) / MINUTE;
         long seconds = (time % MINUTE) / SECOND;
-        return TIME.format(new Long[] { days, hours, minutes, seconds });
+        return TIME.format(new Long[]{days, hours, minutes, seconds});
     }
 
 
@@ -203,7 +253,13 @@ public class StoreStatsService extends ServiceThread {
         return sb.toString();
     }
 
-
+    /**
+     * 获取指定时间范围内的put tps
+     * time=60 表示获取最近60s之内的tps
+     *
+     * @param time
+     * @return
+     */
     private String getPutTps(int time) {
         String result = "";
         this.lockSampling.lock();
@@ -215,8 +271,7 @@ public class StoreStatsService extends ServiceThread {
                 result += CallSnapshot.getTPS(lastBefore, last);
             }
 
-        }
-        finally {
+        } finally {
             this.lockSampling.unlock();
         }
         return result;
@@ -248,8 +303,7 @@ public class StoreStatsService extends ServiceThread {
                         this.getTimesFoundList.get(this.getTimesFoundList.size() - (time + 1));
                 result += CallSnapshot.getTPS(lastBefore, last);
             }
-        }
-        finally {
+        } finally {
             this.lockSampling.unlock();
         }
 
@@ -283,8 +337,7 @@ public class StoreStatsService extends ServiceThread {
                 result += CallSnapshot.getTPS(lastBefore, last);
             }
 
-        }
-        finally {
+        } finally {
             this.lockSampling.unlock();
         }
 
@@ -318,8 +371,7 @@ public class StoreStatsService extends ServiceThread {
                 result += CallSnapshot.getTPS(lastBefore, last);
             }
 
-        }
-        finally {
+        } finally {
             this.lockSampling.unlock();
         }
 
@@ -365,8 +417,7 @@ public class StoreStatsService extends ServiceThread {
                 }
             }
 
-        }
-        finally {
+        } finally {
             this.lockSampling.unlock();
         }
 
@@ -400,17 +451,29 @@ public class StoreStatsService extends ServiceThread {
             totalTimes = 1L;
         }
 
+        //启动时间
         result.put("bootTimestamp", String.valueOf(this.messageStoreBootTimestamp));
+        //运行时间
         result.put("runtime", this.getFormatRuntime());
+        //put操作的最长耗时时间
         result.put("putMessageEntireTimeMax", String.valueOf(this.putMessageEntireTimeMax));
+        //put操作的总耗时时间
         result.put("putMessageTimesTotal", String.valueOf(totalTimes));
+        //put消息的总大小
         result.put("putMessageSizeTotal", String.valueOf(this.getPutMessageSizeTotal()));
+
+        //put操作在不同时间段内的次数占总put次数的比例
         result.put("putMessageDistributeTime",
-            String.valueOf(this.getPutMessageDistributeTimeStringInfo(totalTimes)));
+                String.valueOf(this.getPutMessageDistributeTimeStringInfo(totalTimes)));
+
+        //put操作的平均消息大小
         result.put("putMessageAverageSize",
-            String.valueOf((this.getPutMessageSizeTotal() / totalTimes.doubleValue())));
+                String.valueOf((this.getPutMessageSizeTotal() / totalTimes.doubleValue())));
+        //
         result.put("dispatchMaxBuffer", String.valueOf(this.dispatchMaxBuffer));
+        // get操作的最大耗时时间
         result.put("getMessageEntireTimeMax", String.valueOf(this.getMessageEntireTimeMax));
+        //获取put操作的10s 60s 600s的tps
         result.put("putTps", String.valueOf(this.getPutTps()));
         result.put("getFoundTps", String.valueOf(this.getGetFoundTps()));
         result.put("getMissTps", String.valueOf(this.getGetMissTps()));
@@ -431,8 +494,7 @@ public class StoreStatsService extends ServiceThread {
                 this.sampling();
 
                 this.printTps();
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 log.warn(this.getServiceName() + " service has exception. ", e);
             }
         }
@@ -450,25 +512,24 @@ public class StoreStatsService extends ServiceThread {
             }
 
             this.getTimesFoundList.add(new CallSnapshot(System.currentTimeMillis(),
-                this.getMessageTimesTotalFound.get()));
+                    this.getMessageTimesTotalFound.get()));
             if (this.getTimesFoundList.size() > (MaxRecordsOfSampling + 1)) {
                 this.getTimesFoundList.removeFirst();
             }
 
             this.getTimesMissList.add(new CallSnapshot(System.currentTimeMillis(),
-                this.getMessageTimesTotalMiss.get()));
+                    this.getMessageTimesTotalMiss.get()));
             if (this.getTimesMissList.size() > (MaxRecordsOfSampling + 1)) {
                 this.getTimesMissList.removeFirst();
             }
 
             this.transferedMsgCountList.add(new CallSnapshot(System.currentTimeMillis(),
-                this.getMessageTransferedMsgCount.get()));
+                    this.getMessageTransferedMsgCount.get()));
             if (this.transferedMsgCountList.size() > (MaxRecordsOfSampling + 1)) {
                 this.transferedMsgCountList.removeFirst();
             }
 
-        }
-        finally {
+        } finally {
             this.lockSampling.unlock();
         }
     }

@@ -396,12 +396,12 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-all</artifactId>
-                <version>4.0.29.Final</version>
+                <version>[4.1.42,)</version>
             </dependency>
             <dependency>
                 <groupId>com.alibaba</groupId>
                 <artifactId>fastjson</artifactId>
-                <version>1.2.3</version>
+                <version>[1.2.31,)</version>
             </dependency>
             <dependency>
                 <groupId>mysql</groupId>

@@ -33,6 +33,7 @@ public class Producer {
                         "TagA",// tag
                         "OrderID188",// key
                         ("Hello MetaQ").getBytes());// body
+
                     SendResult sendResult = producer.send(msg);
                     System.out.println(sendResult);
                 }
@@ -41,6 +42,9 @@ public class Producer {
             catch (Exception e) {
                 e.printStackTrace();
             }
+
+        producer.setInstanceName("");
+        producer.setProducerGroup("");
 
         producer.shutdown();
     }

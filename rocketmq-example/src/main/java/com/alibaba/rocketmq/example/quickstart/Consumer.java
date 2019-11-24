@@ -41,6 +41,12 @@ public class Consumer {
             @Override
             public ConsumeConcurrentlyStatus consumeMessage(List<MessageExt> msgs,
                     ConsumeConcurrentlyContext context) {
+
+                context.setAckIndex(111);
+
+                MessageExt messageExt = msgs.get(0);
+                messageExt.getKeys();
+
                 System.out.println(Thread.currentThread().getName() + " Receive New Messages: " + msgs);
                 return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
             }

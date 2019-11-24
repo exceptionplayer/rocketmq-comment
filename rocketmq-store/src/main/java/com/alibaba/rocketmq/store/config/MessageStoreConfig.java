@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.store.config;
 
@@ -23,7 +23,6 @@ import java.io.File;
 
 
 /**
- * 
  * @author shijia.wxr
  * @author vongosling
  */
@@ -35,9 +34,16 @@ public class MessageStoreConfig {
     @ImportantField
     private String storePathCommitLog = System.getProperty("user.home") + File.separator + "store"
             + File.separator + "commitlog";
+
+    /**
+     * 单个COmmitLog文件大小，默认1G
+     */
     // CommitLog file size,default is 1G
     private int mapedFileSizeCommitLog = 1024 * 1024 * 1024;
-    // ConsumeQueue file size, default is 30W
+    /**
+     * 单个ConsumeQueue文件大小，默认600W Byte
+     */
+    // ConsumeQueue file size, default is 30W*20Byte = 600WByte
     private int mapedFileSizeConsumeQueue = 300000 * ConsumeQueue.CQStoreUnitSize;
     // CommitLog flush interval
     @ImportantField
@@ -78,16 +84,30 @@ public class MessageStoreConfig {
     private int flushConsumeQueueLeastPages = 2;
     private int flushCommitLogThoroughInterval = 1000 * 10;
     private int flushConsumeQueueThoroughInterval = 1000 * 60;
+
+    //内存中的消息， 最大传输字节数
     @ImportantField
     private int maxTransferBytesOnMessageInMemory = 1024 * 256;
+    //内存中的消息， 最大传输条数
     @ImportantField
     private int maxTransferCountOnMessageInMemory = 32;
+
+    //磁盘中的消息 最大传输字节数 用于控制返回给客户端的消息数据量
     @ImportantField
     private int maxTransferBytesOnMessageInDisk = 1024 * 64;
+    //磁盘中的消息 最大传输条数 用于控制返回给客户端的消息数据量
     @ImportantField
     private int maxTransferCountOnMessageInDisk = 8;
+
+    /**
+     * 从内存中获取消息的最大比例
+     * TODO:
+     * 比例为什么是40%？？？这个值从哪儿的出来的呢？
+     *
+     */
     @ImportantField
     private int accessMessageInMemoryMaxRatio = 40;
+
     @ImportantField
     private boolean messageIndexEnable = true;
     private int maxHashSlotNum = 5000000;
@@ -109,6 +129,14 @@ public class MessageStoreConfig {
     private int syncFlushTimeout = 1000 * 5;
     private String messageDelayLevel = "1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h";
     private long flushDelayOffsetInterval = 1000 * 10;
+
+    /**
+     * 磁盘满、且无过期文件情况下
+     TRUE 表示强制删除文件，优
+     先保证服务可用
+     FALSE 标记服务不可用，文件
+     不删除
+     */
     @ImportantField
     private boolean cleanFileForciblyEnable = true;
     private boolean warmMapedFileEnable = false;
@@ -594,7 +622,10 @@ public class MessageStoreConfig {
         this.storePathRootDir = storePathRootDir;
     }
 
-
+    /**
+     * 预分配的时候的最小刷盘页数
+     * @return
+     */
     public int getFlushLeastPagesWhenWarmMapedFile() {
         return flushLeastPagesWhenWarmMapedFile;
     }

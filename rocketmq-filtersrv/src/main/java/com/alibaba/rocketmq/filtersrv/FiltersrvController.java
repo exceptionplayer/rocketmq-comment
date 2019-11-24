@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.filtersrv;
 
@@ -52,12 +52,12 @@ public class FiltersrvController {
     private final FilterServerOuterAPI filterServerOuterAPI = new FilterServerOuterAPI();
 
     private final DefaultMQPullConsumer defaultMQPullConsumer = new DefaultMQPullConsumer(
-        MixAll.FILTERSRV_CONSUMER_GROUP);
+            MixAll.FILTERSRV_CONSUMER_GROUP);
 
     private volatile String brokerName = null;
 
     private final ScheduledExecutorService scheduledExecutorService = Executors
-        .newSingleThreadScheduledExecutor(new ThreadFactoryImpl("FSScheduledThread"));
+            .newSingleThreadScheduledExecutor(new ThreadFactoryImpl("FSScheduledThread"));
 
     private final FilterServerStatsManager filterServerStatsManager = new FilterServerStatsManager();
 
@@ -76,22 +76,27 @@ public class FiltersrvController {
 
         this.remotingExecutor =
                 Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(),
-                    new ThreadFactoryImpl("RemotingExecutorThread_"));
+                        new ThreadFactoryImpl("RemotingExecutorThread_"));
 
         this.registerProcessor();
 
+        /**
+         * 每隔10s向Broker注册一下自己的信息
+         * 为了防止出现连接断开的情况，可以理解为发送心跳
+         */
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
             public void run() {
                 FiltersrvController.this.registerFilterServerToBroker();
             }
+
         }, 3, 10, TimeUnit.SECONDS);
 
         this.defaultMQPullConsumer.setBrokerSuspendMaxTimeMillis(this.defaultMQPullConsumer
-            .getBrokerSuspendMaxTimeMillis() - 1000);
+                .getBrokerSuspendMaxTimeMillis() - 1000);
         this.defaultMQPullConsumer.setConsumerTimeoutMillisWhenSuspend(this.defaultMQPullConsumer
-            .getConsumerTimeoutMillisWhenSuspend() - 1000);
+                .getConsumerTimeoutMillisWhenSuspend() - 1000);
 
         this.defaultMQPullConsumer.setNamesrvAddr(this.filtersrvConfig.getNamesrvAddr());
         this.defaultMQPullConsumer.setInstanceName(String.valueOf(UtilAll.getPid()));
@@ -102,30 +107,27 @@ public class FiltersrvController {
 
     public String localAddr() {
         return String.format("%s:%d", this.filtersrvConfig.getFilterServerIP(),
-            this.remotingServer.localListenPort());
+                this.remotingServer.localListenPort());
     }
 
 
     public void registerFilterServerToBroker() {
         try {
             RegisterFilterServerResponseHeader responseHeader =
-                    this.filterServerOuterAPI.registerFilterServerToBroker(
-                        this.filtersrvConfig.getConnectWhichBroker(), this.localAddr());
-            this.defaultMQPullConsumer.getDefaultMQPullConsumerImpl().getPullAPIWrapper()
-                .setDefaultBrokerId(responseHeader.getBrokerId());
+                    this.filterServerOuterAPI.registerFilterServerToBroker(this.filtersrvConfig.getConnectWhichBroker(), this.localAddr());
+            this.defaultMQPullConsumer.getDefaultMQPullConsumerImpl().getPullAPIWrapper().setDefaultBrokerId(responseHeader.getBrokerId());
 
             if (null == this.brokerName) {
                 this.brokerName = responseHeader.getBrokerName();
             }
 
             log.info("register filter server<{}> to broker<{}> OK, Return: {} {}", //
-                this.localAddr(),//
-                this.filtersrvConfig.getConnectWhichBroker(),//
-                responseHeader.getBrokerName(),//
-                responseHeader.getBrokerId()//
+                    this.localAddr(),//
+                    this.filtersrvConfig.getConnectWhichBroker(),//
+                    responseHeader.getBrokerName(),//
+                    responseHeader.getBrokerId()//
             );
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.warn("register filter server Exception", e);
             log.warn("access broker failed, kill oneself");
             System.exit(-1);
@@ -135,17 +137,26 @@ public class FiltersrvController {
 
     private void registerProcessor() {
         this.remotingServer
-            .registerDefaultProcessor(new DefaultRequestProcessor(this), this.remotingExecutor);
+                .registerDefaultProcessor(new DefaultRequestProcessor(this), this.remotingExecutor);
     }
 
 
     public void start() throws Exception {
         this.defaultMQPullConsumer.start();
         this.remotingServer.start();
+
         this.filterServerOuterAPI.start();
-        this.defaultMQPullConsumer.getDefaultMQPullConsumerImpl().getPullAPIWrapper()
-            .setConnectBrokerByUser(true);
+
+        /**
+         *
+         */
+        this.defaultMQPullConsumer.getDefaultMQPullConsumerImpl().getPullAPIWrapper().setConnectBrokerByUser(true);
+
+        /**
+         * 类管理器
+         */
         this.filterClassManager.start();
+
         this.filterServerStatsManager.start();
     }
 

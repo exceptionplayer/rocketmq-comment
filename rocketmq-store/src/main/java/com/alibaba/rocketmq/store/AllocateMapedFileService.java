@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.store;
 
@@ -30,6 +30,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * MapedFile预分配服务
+ */
 public class AllocateMapedFileService extends ServiceThread {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.StoreLoggerName);
     private static int WaitTimeOut = 1000 * 5;
@@ -45,10 +48,18 @@ public class AllocateMapedFileService extends ServiceThread {
         this.messageStore = messageStore;
     }
 
-
+    /**
+     * 预分配
+     *
+     * @param nextFilePath 下一个文件路径
+     * @param nextNextFilePath 下下一个 文件路径
+     * @param fileSize 文件大小
+     * @return
+     */
     public MapedFile putRequestAndReturnMapedFile(String nextFilePath, String nextNextFilePath, int fileSize) {
         AllocateRequest nextReq = new AllocateRequest(nextFilePath, fileSize);
         AllocateRequest nextNextReq = new AllocateRequest(nextNextFilePath, fileSize);
+
         boolean nextPutOK = (this.requestTable.putIfAbsent(nextFilePath, nextReq) == null);
         boolean nextNextPutOK = (this.requestTable.putIfAbsent(nextNextFilePath, nextNextReq) == null);
 
@@ -71,6 +82,9 @@ public class AllocateMapedFileService extends ServiceThread {
             return null;
         }
 
+        /**
+         * 等待下一个文件分配成功返回
+         */
         AllocateRequest result = this.requestTable.get(nextFilePath);
         try {
             if (result != null) {
@@ -78,17 +92,14 @@ public class AllocateMapedFileService extends ServiceThread {
                 if (!waitOK) {
                     log.warn("create mmap timeout " + result.getFilePath() + " " + result.getFileSize());
                     return null;
-                }
-                else {
+                } else {
                     this.requestTable.remove(nextFilePath);
                     return result.getMapedFile();
                 }
-            }
-            else {
+            } else {
                 log.error("find preallocate mmap failed, this never happen");
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.warn(this.getServiceName() + " service has exception. ", e);
         }
 
@@ -108,8 +119,7 @@ public class AllocateMapedFileService extends ServiceThread {
 
         try {
             this.thread.join(this.getJointime());
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
@@ -140,21 +150,32 @@ public class AllocateMapedFileService extends ServiceThread {
         AllocateRequest req = null;
         try {
             req = this.requestQueue.take();
+
             AllocateRequest expectedRequest = this.requestTable.get(req.getFilePath());
+
             if (null == expectedRequest) {
                 log.warn("this mmap request expired, maybe cause timeout " + req.getFilePath() + " "
                         + req.getFileSize());
                 return true;
             }
+
             if (expectedRequest != req) {
                 log.warn("never expected here,  maybe cause timeout " + req.getFilePath() + " "
                         + req.getFileSize() + ", req:" + req + ", expectedRequest:" + expectedRequest);
                 return true;
             }
 
+            /**
+             * 如果没有分配MapedFile就创建
+             */
             if (req.getMapedFile() == null) {
                 long beginTime = System.currentTimeMillis();
+
+                /**
+                 * 创建MapedFile
+                 */
                 MapedFile mapedFile = new MapedFile(req.getFilePath(), req.getFileSize());
+
                 long eclipseTime = UtilAll.computeEclipseTimeMilliseconds(beginTime);
                 if (eclipseTime > 10) {
                     int queueSize = this.requestQueue.size();
@@ -162,38 +183,44 @@ public class AllocateMapedFileService extends ServiceThread {
                             + " " + req.getFilePath() + " " + req.getFileSize());
                 }
 
+                /**
+                 * 如果文件大小>=commitLog文件的大小
+                 * 并且
+                 * 配置允许 warmMapedFileEnable
+                 *
+                 * 就执行warmMappedFile
+                 */
                 // pre write mappedFile
-                if (mapedFile.getFileSize() >= this.messageStore.getMessageStoreConfig()
-                    .getMapedFileSizeCommitLog() //
+                if (mapedFile.getFileSize() >= this.messageStore.getMessageStoreConfig().getMapedFileSizeCommitLog() //
                         && //
                         this.messageStore.getMessageStoreConfig().isWarmMapedFileEnable()) {
+
+                    /**
+                     * warm
+                     */
                     mapedFile.warmMappedFile(this.messageStore.getMessageStoreConfig().getFlushDiskType(),
-                        this.messageStore.getMessageStoreConfig().getFlushLeastPagesWhenWarmMapedFile());
+                            this.messageStore.getMessageStoreConfig().getFlushLeastPagesWhenWarmMapedFile());
                 }
 
                 req.setMapedFile(mapedFile);
                 this.hasException = false;
                 isSuccess = true;
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             log.warn(this.getServiceName() + " service has exception, maybe by shutdown");
             this.hasException = true;
             return false;
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             log.warn(this.getServiceName() + " service has exception. ", e);
             this.hasException = true;
             if (null != req) {
                 requestQueue.offer(req);
                 try {
                     Thread.sleep(1);
-                }
-                catch (InterruptedException e1) {
+                } catch (InterruptedException e1) {
                 }
             }
-        }
-        finally {
+        } finally {
             if (req != null && isSuccess)
                 req.getCountDownLatch().countDown();
         }
@@ -259,19 +286,16 @@ public class AllocateMapedFileService extends ServiceThread {
                 return 1;
             else if (this.fileSize > other.fileSize) {
                 return -1;
-            }
-            else {
+            } else {
                 int mIndex = this.filePath.lastIndexOf(File.separator);
                 long mName = Long.parseLong(this.filePath.substring(mIndex + 1));
                 int oIndex = other.filePath.lastIndexOf(File.separator);
                 long oName = Long.parseLong(other.filePath.substring(oIndex + 1));
                 if (mName < oName) {
                     return -1;
-                }
-                else if (mName > oName) {
+                } else if (mName > oName) {
                     return 1;
-                }
-                else {
+                } else {
                     return 0;
                 }
             }
@@ -302,8 +326,7 @@ public class AllocateMapedFileService extends ServiceThread {
             if (filePath == null) {
                 if (other.filePath != null)
                     return false;
-            }
-            else if (!filePath.equals(other.filePath))
+            } else if (!filePath.equals(other.filePath))
                 return false;
             if (fileSize != other.fileSize)
                 return false;

@@ -5,14 +5,16 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * <p>
+ * $Id: TopicRouteData.java 1835 2013-05-16 02:00:50Z shijia.wxr $
  */
 
 /**
@@ -28,12 +30,18 @@ import java.util.List;
 
 
 /**
+ *
  * @author shijia.wxr
  */
 public class TopicRouteData extends RemotingSerializable {
     private String orderTopicConf;
+
     private List<QueueData> queueDatas;
     private List<BrokerData> brokerDatas;
+
+    /**
+     * Broker地址与FilterServer地址关系
+     */
     private HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
 
@@ -114,26 +122,22 @@ public class TopicRouteData extends RemotingSerializable {
         if (brokerDatas == null) {
             if (other.brokerDatas != null)
                 return false;
-        }
-        else if (!brokerDatas.equals(other.brokerDatas))
+        } else if (!brokerDatas.equals(other.brokerDatas))
             return false;
         if (orderTopicConf == null) {
             if (other.orderTopicConf != null)
                 return false;
-        }
-        else if (!orderTopicConf.equals(other.orderTopicConf))
+        } else if (!orderTopicConf.equals(other.orderTopicConf))
             return false;
         if (queueDatas == null) {
             if (other.queueDatas != null)
                 return false;
-        }
-        else if (!queueDatas.equals(other.queueDatas))
+        } else if (!queueDatas.equals(other.queueDatas))
             return false;
         if (filterServerTable == null) {
             if (other.filterServerTable != null)
                 return false;
-        }
-        else if (!filterServerTable.equals(other.filterServerTable))
+        } else if (!filterServerTable.equals(other.filterServerTable))
             return false;
         return true;
     }

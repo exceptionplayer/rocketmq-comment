@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.store;
 
@@ -33,22 +33,42 @@ public class ConsumeQueue {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.StoreLoggerName);
     private static final Logger logError = LoggerFactory.getLogger(LoggerName.StoreErrorLoggerName);
     private final DefaultMessageStore defaultMessageStore;
+
+    /**
+     * 消费者队列中的MapedFileQueue
+     */
     private final MapedFileQueue mapedFileQueue;
+
+
     private final String topic;
     private final int queueId;
     private final ByteBuffer byteBufferIndex;
     private final String storePath;
+
+    /**
+     * 每个MapedFile大小
+     */
     private final int mapedFileSize;
+
     private long maxPhysicOffset = -1;
     private volatile long minLogicOffset = 0;
 
 
+    /**
+     * 消费队列
+     *
+     * @param topic               Topic
+     * @param queueId             队列ID
+     * @param storePath           消费队列数据存储路径
+     * @param mapedFileSize       消费队列日志文件大小
+     * @param defaultMessageStore 默认的MessageStore实例
+     */
     public ConsumeQueue(//
-            final String topic,//
-            final int queueId,//
-            final String storePath,//
-            final int mapedFileSize,//
-            final DefaultMessageStore defaultMessageStore) {
+                        final String topic,//
+                        final int queueId,//
+                        final String storePath,//
+                        final int mapedFileSize,//
+                        final DefaultMessageStore defaultMessageStore) {
         this.storePath = storePath;
         this.mapedFileSize = mapedFileSize;
         this.defaultMessageStore = defaultMessageStore;
@@ -94,8 +114,7 @@ public class ConsumeQueue {
                     if (offset >= 0 && size > 0) {
                         mapedFileOffset = i + CQStoreUnitSize;
                         this.maxPhysicOffset = offset;
-                    }
-                    else {
+                    } else {
                         log.info("recover current consume queue file over,  " + mapedFile.getFileName() + " "
                                 + offset + " " + size + " " + tagsCode);
                         break;
@@ -108,16 +127,14 @@ public class ConsumeQueue {
                         log.info("recover last consume queue file over, last maped file "
                                 + mapedFile.getFileName());
                         break;
-                    }
-                    else {
+                    } else {
                         mapedFile = mapedFiles.get(index);
                         byteBuffer = mapedFile.sliceByteBuffer();
                         processOffset = mapedFile.getFileFromOffset();
                         mapedFileOffset = 0;
                         log.info("recover next consume queue file, " + mapedFile.getFileName());
                     }
-                }
-                else {
+                } else {
                     log.info("recover current consume queue queue over " + mapedFile.getFileName() + " "
                             + (processOffset + mapedFileOffset));
                     break;
@@ -135,7 +152,7 @@ public class ConsumeQueue {
             long offset = 0;
             int low =
                     minLogicOffset > mapedFile.getFileFromOffset() ? (int) (minLogicOffset - mapedFile
-                        .getFileFromOffset()) : 0;
+                            .getFileFromOffset()) : 0;
 
             int high = 0;
             int midOffset = -1, targetOffset = -1, leftOffset = -1, rightOffset = -1;
@@ -156,17 +173,14 @@ public class ConsumeQueue {
                                 this.defaultMessageStore.getCommitLog().pickupStoretimestamp(phyOffset, size);
                         if (storeTime < 0) {
                             return 0;
-                        }
-                        else if (storeTime == timestamp) {
+                        } else if (storeTime == timestamp) {
                             targetOffset = midOffset;
                             break;
-                        }
-                        else if (storeTime > timestamp) {
+                        } else if (storeTime > timestamp) {
                             high = midOffset - CQStoreUnitSize;
                             rightOffset = midOffset;
                             rightIndexValue = storeTime;
-                        }
-                        else {
+                        } else {
                             low = midOffset + CQStoreUnitSize;
                             leftOffset = midOffset;
                             leftIndexValue = storeTime;
@@ -175,15 +189,12 @@ public class ConsumeQueue {
 
                     if (targetOffset != -1) {
                         offset = targetOffset;
-                    }
-                    else {
+                    } else {
                         if (leftIndexValue == -1) {
                             offset = rightOffset;
-                        }
-                        else if (rightIndexValue == -1) {
+                        } else if (rightIndexValue == -1) {
                             offset = leftOffset;
-                        }
-                        else {
+                        } else {
                             offset =
                                     Math.abs(timestamp - leftIndexValue) > Math.abs(timestamp
                                             - rightIndexValue) ? rightOffset : leftOffset;
@@ -191,8 +202,7 @@ public class ConsumeQueue {
                     }
 
                     return (mapedFile.getFileFromOffset() + offset) / CQStoreUnitSize;
-                }
-                finally {
+                } finally {
                     sbr.release();
                 }
             }
@@ -222,15 +232,13 @@ public class ConsumeQueue {
                         if (offset >= phyOffet) {
                             this.mapedFileQueue.deleteLastMapedFile();
                             break;
-                        }
-                        else {
+                        } else {
                             int pos = i + CQStoreUnitSize;
                             mapedFile.setWrotePostion(pos);
                             mapedFile.setCommittedPosition(pos);
                             this.maxPhysicOffset = offset;
                         }
-                    }
-                    else {
+                    } else {
                         if (offset >= 0 && size > 0) {
                             if (offset >= phyOffet) {
                                 return;
@@ -244,14 +252,12 @@ public class ConsumeQueue {
                             if (pos == logicFileSize) {
                                 return;
                             }
-                        }
-                        else {
+                        } else {
                             return;
                         }
                     }
                 }
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -276,8 +282,7 @@ public class ConsumeQueue {
 
                 if (offset >= 0 && size > 0) {
                     lastOffset = offset + size;
-                }
-                else {
+                } else {
                     break;
                 }
             }
@@ -292,7 +297,14 @@ public class ConsumeQueue {
     }
 
 
+    /**
+     * 删除过期的ConsumeQueue
+     *
+     * @param offset commitLog中的最小Offset值
+     * @return 返回删除数量
+     */
     public int deleteExpiredFile(long offset) {
+
         int cnt = this.mapedFileQueue.deleteExpiredFileByOffset(offset, CQStoreUnitSize);
         this.correctMinOffset(offset);
         return cnt;
@@ -316,11 +328,9 @@ public class ConsumeQueue {
                             break;
                         }
                     }
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     e.printStackTrace();
-                }
-                finally {
+                } finally {
                     result.release();
                 }
             }
@@ -334,7 +344,7 @@ public class ConsumeQueue {
 
 
     public void putMessagePostionInfoWrapper(long offset, int size, long tagsCode, long storeTimestamp,
-            long logicOffset) {
+                                             long logicOffset) {
         final int MaxRetries = 30;
         boolean canWrite = this.defaultMessageStore.getRunningFlags().isWriteable();
         for (int i = 0; i < MaxRetries && canWrite; i++) {
@@ -342,15 +352,13 @@ public class ConsumeQueue {
             if (result) {
                 this.defaultMessageStore.getStoreCheckpoint().setLogicsMsgTimestamp(storeTimestamp);
                 return;
-            }
-            else {
+            } else {
                 log.warn("[BUG]put commit log postion info to " + topic + ":" + queueId + " " + offset
                         + " failed, retry " + i + " times");
 
                 try {
                     Thread.sleep(1000);
-                }
-                catch (InterruptedException e) {
+                } catch (InterruptedException e) {
                     log.warn("", e);
                 }
             }
@@ -362,7 +370,7 @@ public class ConsumeQueue {
 
 
     private boolean putMessagePostionInfo(final long offset, final int size, final long tagsCode,
-            final long cqOffset) {
+                                          final long cqOffset) {
         if (offset <= this.maxPhysicOffset) {
             return true;
         }
@@ -388,14 +396,14 @@ public class ConsumeQueue {
                 long currentLogicOffset = mapedFile.getWrotePostion() + mapedFile.getFileFromOffset();
                 if (expectLogicOffset != currentLogicOffset) {
                     logError
-                        .warn(
-                            "[BUG]logic queue order maybe wrong, expectLogicOffset: {} currentLogicOffset: {} Topic: {} QID: {} Diff: {}",//
-                            expectLogicOffset, //
-                            currentLogicOffset,//
-                            this.topic,//
-                            this.queueId,//
-                            expectLogicOffset - currentLogicOffset//
-                        );
+                            .warn(
+                                    "[BUG]logic queue order maybe wrong, expectLogicOffset: {} currentLogicOffset: {} Topic: {} QID: {} Diff: {}",//
+                                    expectLogicOffset, //
+                                    currentLogicOffset,//
+                                    this.topic,//
+                                    this.queueId,//
+                                    expectLogicOffset - currentLogicOffset//
+                            );
                 }
             }
 
@@ -422,7 +430,11 @@ public class ConsumeQueue {
     public SelectMapedBufferResult getIndexBuffer(final long startIndex) {
         int mapedFileSize = this.mapedFileSize;
         long offset = startIndex * CQStoreUnitSize;
+        //获取数据的Offset必须大于当前队列的最小Offset值
         if (offset >= this.getMinLogicOffset()) {
+            /**
+             * 获取MapedFile并读取数据
+             */
             MapedFile mapedFile = this.mapedFileQueue.findMapedFileByOffset(offset);
             if (mapedFile != null) {
                 SelectMapedBufferResult result = mapedFile.selectMapedBuffer((int) (offset % mapedFileSize));

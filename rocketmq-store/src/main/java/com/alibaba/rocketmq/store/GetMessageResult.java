@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.alibaba.rocketmq.store;
 
@@ -24,19 +24,39 @@ import java.util.List;
 
 
 /**
+ * 客户端拉消息的返回结果
  *
  * @author shijia.wxr
  */
 public class GetMessageResult {
-    private final List<SelectMapedBufferResult> messageMapedList =
-            new ArrayList<SelectMapedBufferResult>(100);
+
+    private final List<SelectMapedBufferResult> messageMapedList = new ArrayList<SelectMapedBufferResult>(100);
+
+    /**
+     * 消息内容对应的ByteBuffer列表
+     */
     private final List<ByteBuffer> messageBufferList = new ArrayList<ByteBuffer>(100);
+
+
     private GetMessageStatus status;
+
+    /**
+     * 下次取消息的Offset开始值
+     */
     private long nextBeginOffset;
     private long minOffset;
     private long maxOffset;
+
+    /**
+     * 结果集中所有的消息的总大小
+     */
     private int bufferTotalSize = 0;
+    /**
+     * 是否建议从slave节点获取数据
+     */
     private boolean suggestPullingFromSlave = false;
+
+
     private int msgCount4Commercial = 0;
 
 
@@ -95,11 +115,14 @@ public class GetMessageResult {
 
 
     public void addMessage(final SelectMapedBufferResult mapedBuffer) {
+
         this.messageMapedList.add(mapedBuffer);
+
         this.messageBufferList.add(mapedBuffer.getByteBuffer());
+
         this.bufferTotalSize += mapedBuffer.getSize();
-        this.msgCount4Commercial += (int) Math.ceil(
-                mapedBuffer.getSize() / BrokerStatsManager.SIZE_PER_COUNT);
+
+        this.msgCount4Commercial += (int) Math.ceil(mapedBuffer.getSize() / BrokerStatsManager.SIZE_PER_COUNT);
     }
 
 

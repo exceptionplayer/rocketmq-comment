@@ -305,7 +305,7 @@ public class BrokerController {
     public void registerProcessor() {
         SendMessageProcessor sendProcessor = new SendMessageProcessor(this);
         sendProcessor.registerSendMessageHook(sendMessageHookList);
-        
+
         this.remotingServer.registerProcessor(RequestCode.SEND_MESSAGE, sendProcessor, this.sendMessageExecutor);
         this.remotingServer.registerProcessor(RequestCode.SEND_MESSAGE_V2, sendProcessor,this.sendMessageExecutor);
         this.remotingServer.registerProcessor(RequestCode.CONSUMER_SEND_MSG_BACK, sendProcessor,this.sendMessageExecutor);
@@ -446,7 +446,7 @@ public class BrokerController {
         if (this.fastRemotingServer!=null) {
 			this.fastRemotingServer.shutdown();
 		}
-        
+
         if (this.messageStore != null) {
             this.messageStore.shutdown();
         }
@@ -511,7 +511,7 @@ public class BrokerController {
 		if (this.fastRemotingServer != null) {
 			this.fastRemotingServer.start();
 		}
-		
+
         if (this.brokerOuterAPI != null) {
             this.brokerOuterAPI.start();
         }
@@ -552,15 +552,23 @@ public class BrokerController {
     public synchronized void registerBrokerAll(final boolean checkOrderConfig, boolean oneway) {
         TopicConfigSerializeWrapper topicConfigWrapper = this.getTopicConfigManager().buildTopicConfigSerializeWrapper();
 
+        /**
+         * 如果 不可写又不可读
+         */
         if (!PermName.isWriteable(this.getBrokerConfig().getBrokerPermission())
                 || !PermName.isReadable(this.getBrokerConfig().getBrokerPermission())) {
+
             ConcurrentHashMap<String, TopicConfig> topicConfigTable = new ConcurrentHashMap<String, TopicConfig>();
+
             for (TopicConfig topicConfig : topicConfigWrapper.getTopicConfigTable().values()) {
+
                 TopicConfig tmp =
                         new TopicConfig(topicConfig.getTopicName(), topicConfig.getReadQueueNums(), topicConfig.getWriteQueueNums(),
                             this.brokerConfig.getBrokerPermission());
+
                 topicConfigTable.put(topicConfig.getTopicName(), tmp);
             }
+
             topicConfigWrapper.setTopicConfigTable(topicConfigTable);
         }
 

@@ -5,14 +5,14 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.alibaba.rocketmq.broker.filtersrv;
@@ -40,13 +40,17 @@ public class FilterServerManager {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.BrokerLoggerName);
     public static final long FilterServerMaxIdleTimeMills = 30000;
 
-    private final ConcurrentHashMap<Channel, FilterServerInfo> filterServerTable =
-            new ConcurrentHashMap<Channel, FilterServerInfo>(16);
+    /**
+     * 当前Broker对应的FilterServer信息
+     * <p>
+     * 数据来源：当有FilterServer注册的时候会新增，Channel关闭的时候会移除
+     */
+    private final ConcurrentHashMap<Channel, FilterServerInfo> filterServerTable = new ConcurrentHashMap<Channel, FilterServerInfo>(16);
 
     private final BrokerController brokerController;
 
     private ScheduledExecutorService scheduledExecutorService = Executors
-        .newSingleThreadScheduledExecutor(new ThreadFactoryImpl("FilterServerManagerScheduledThread"));
+            .newSingleThreadScheduledExecutor(new ThreadFactoryImpl("FilterServerManagerScheduledThread"));
 
     class FilterServerInfo {
         private String filterServerAddr;
@@ -79,14 +83,18 @@ public class FilterServerManager {
     }
 
 
+    /**
+     * 每隔30s创建一下FilterServer
+     * <p>
+     * 如果FilterServer断开了，并且存活的FilterServer总数没有达到设置的数量，就需要重新创建一个FilterServer
+     */
     public void start() {
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
                 try {
                     FilterServerManager.this.createFilterServer();
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     log.error("", e);
                 }
             }
@@ -99,8 +107,23 @@ public class FilterServerManager {
     }
 
 
+    /**
+     * 构造创建filterServer的 shell命令
+     * 区分windows和linux平台
+     * <p>
+     * 最后命令格式：
+     * <p>
+     * linux下
+     * sh /${ROCKETMQ_HOME}/bin/startfsrv.sh [-c configFile|-n nameserver]
+     * <p>
+     * windows下
+     * start /b ${ROCKETMQ_HOME}\\bin\\mqfiltersrv.exe [-c configFile|-n nameserver]
+     *
+     * @return
+     */
     private String buildStartCommand() {
         String config = "";
+
         if (BrokerStartup.configFile != null) {
             config = String.format("-c %s", BrokerStartup.configFile);
         }
@@ -111,20 +134,23 @@ public class FilterServerManager {
 
         if (RemotingUtil.isWindowsPlatform()) {
             return String.format("start /b %s\\bin\\mqfiltersrv.exe %s", //
-                this.brokerController.getBrokerConfig().getRocketmqHome(),//
-                config);
-        }
-        else {
+                    this.brokerController.getBrokerConfig().getRocketmqHome(),//
+                    config);
+        } else {
             return String.format("sh %s/bin/startfsrv.sh %s", //
-                this.brokerController.getBrokerConfig().getRocketmqHome(),//
-                config);
+                    this.brokerController.getBrokerConfig().getRocketmqHome(),//
+                    config);
         }
     }
 
 
+    /**
+     * 创建FilterServer
+     * 通过调用shell的方式
+     * 创建达到配置的FilterServer个数，如果已经达到个数了，就不做任何操作
+     */
     public void createFilterServer() {
-        int more =
-                this.brokerController.getBrokerConfig().getFilterServerNums() - this.filterServerTable.size();
+        int more = this.brokerController.getBrokerConfig().getFilterServerNums() - this.filterServerTable.size();
         String cmd = this.buildStartCommand();
         for (int i = 0; i < more; i++) {
             FilterServerUtil.callShell(cmd, log);
@@ -132,16 +158,27 @@ public class FilterServerManager {
     }
 
 
+    /**
+     * filterServer注册到Broker
+     *
+     * @param channel
+     * @param filterServerAddr
+     */
     public void registerFilterServer(final Channel channel, final String filterServerAddr) {
         FilterServerInfo filterServerInfo = this.filterServerTable.get(channel);
         if (filterServerInfo != null) {
             filterServerInfo.setLastUpdateTimestamp(System.currentTimeMillis());
-        }
-        else {
+        } else {
             filterServerInfo = new FilterServerInfo();
             filterServerInfo.setFilterServerAddr(filterServerAddr);
             filterServerInfo.setLastUpdateTimestamp(System.currentTimeMillis());
+
+
+            /**
+             *
+             */
             this.filterServerTable.put(channel, filterServerInfo);
+
             log.info("Receive a New Filter Server<{}>", filterServerAddr);
         }
     }
@@ -169,11 +206,16 @@ public class FilterServerManager {
         FilterServerInfo old = this.filterServerTable.remove(channel);
         if (old != null) {
             log.warn("The Filter Server<{}> connection<{}> closed, remove it", old.getFilterServerAddr(),
-                remoteAddr);
+                    remoteAddr);
         }
     }
 
 
+    /**
+     * 构造FilterServer服务器地址列表
+     *
+     * @return
+     */
     public List<String> buildNewFilterServerList() {
         List<String> addr = new ArrayList<String>();
         Iterator<Entry<Channel, FilterServerInfo>> it = this.filterServerTable.entrySet().iterator();

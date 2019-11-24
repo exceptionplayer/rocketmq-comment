@@ -91,8 +91,10 @@ public class NamesrvStartup {
             }
 
             final NamesrvConfig namesrvConfig = new NamesrvConfig();
+
             final NettyServerConfig nettyServerConfig = new NettyServerConfig();
             nettyServerConfig.setListenPort(9876);
+
             if (commandLine.hasOption('c')) {
                 String file = commandLine.getOptionValue('c');
                 if (file != null) {
@@ -120,6 +122,11 @@ public class NamesrvStartup {
                 System.exit(-2);
             }
 
+            /**
+             * 通过程序控制logback查找配置文件的行为
+             * 由程序指定位置。
+             * 可以参考：http://logback.qos.ch/manual/configuration.html#Invoking JoranConfigurator directly
+             */
             LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
             JoranConfigurator configurator = new JoranConfigurator();
             configurator.setContext(lc);
@@ -132,6 +139,7 @@ public class NamesrvStartup {
 
             final NamesrvController controller = new NamesrvController(namesrvConfig, nettyServerConfig);
             boolean initResult = controller.initialize();
+
             if (!initResult) {
                 controller.shutdown();
                 System.exit(-3);
